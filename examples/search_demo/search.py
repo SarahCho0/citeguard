@@ -171,6 +171,13 @@ class HybridSearch:
                 "parsed": core,
                 "alias_channel": [pid for pid, _ in alias_hits],
                 "bm25_channel": [pid for pid, _ in bm25_hits[:10]],
+                # 채널별 원점수 — 대시보드·디버깅용
+                "alias_scored": [(pid, round(score, 3)) for pid, score in alias_hits],
+                "bm25_scored": [(pid, round(score, 3)) for pid, score in bm25_hits[:10]],
+                "fused_scored": sorted(
+                    ((pid, round(score, 3)) for pid, score in fused.items()),
+                    key=lambda x: -x[1],
+                )[:top_k],
             },
         )
 
