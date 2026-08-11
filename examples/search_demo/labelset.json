@@ -1,18 +1,116 @@
 [
-  {"query": "데부꾸로 3켤레", "gold": ["P001"], "note": "현장 은어 + 수량"},
-  {"query": "함마드릴 1개", "gold": ["P002"], "note": "현장 발음 표기"},
-  {"query": "니빠 하나", "gold": ["P003"], "note": "은어 + 한글 수량어"},
-  {"query": "다루끼 열개", "gold": ["P005"], "note": "치수 없는 은어 — 30x30이 관례상 다루끼"},
-  {"query": "뿌레카 대여", "gold": ["P007"], "note": "은어 + 잡음 단어"},
-  {"query": "빽색 실리콘 2개", "gold": ["P009"], "note": "오타(빽색→백색)"},
-  {"query": "뻬빠 400방", "gold": ["P010"], "note": "은어 + 스펙"},
-  {"query": "타이랩 100개", "gold": ["P014"], "note": "별칭"},
-  {"query": "임팩 하나만", "gold": ["P015"], "note": "축약 은어"},
-  {"query": "레베루 주세요", "gold": ["P016"], "note": "일본식 발음 표기"},
-  {"query": "안전모 5개", "gold": ["P019"], "note": "표준 명칭"},
-  {"query": "베니다 12티 두장", "gold": ["P021"], "note": "은어 + 두께 표기(12티=12T)"},
-  {"query": "석고 열장", "gold": ["P022"], "note": "축약"},
-  {"query": "몽키 250", "gold": ["P024"], "note": "축약 + 치수"},
-  {"query": "젤 싼 목재 각재", "gold": ["P005", "P006"], "note": "정답 복수 — 각재면 정답"},
-  {"query": "가꾸목 다섯개", "gold": ["P005", "P006"], "note": "의도된 실패 케이스 — 미등록 은어(가꾸목=각재). retrieve 단계 유실로 진단되어야 하며, 온톨로지 별칭 보강 대상"}
+  {
+    "query": "데부꾸로 3켤레",
+    "gold": [
+      "P001"
+    ],
+    "note": "field slang + quantity"
+  },
+  {
+    "query": "함마드릴 1개",
+    "gold": [
+      "P002"
+    ],
+    "note": "phonetic field spelling"
+  },
+  {
+    "query": "니빠 하나",
+    "gold": [
+      "P003"
+    ],
+    "note": "slang + Korean numeral"
+  },
+  {
+    "query": "다루끼 열개",
+    "gold": [
+      "P005"
+    ],
+    "note": "slang with no size — 30x30 is the trade convention"
+  },
+  {
+    "query": "뿌레카 대여",
+    "gold": [
+      "P007"
+    ],
+    "note": "slang + noise word"
+  },
+  {
+    "query": "빽색 실리콘 2개",
+    "gold": [
+      "P009"
+    ],
+    "note": "typo (빽색→백색)"
+  },
+  {
+    "query": "뻬빠 400방",
+    "gold": [
+      "P010"
+    ],
+    "note": "slang + spec"
+  },
+  {
+    "query": "타이랩 100개",
+    "gold": [
+      "P014"
+    ],
+    "note": "alias"
+  },
+  {
+    "query": "임팩 하나만",
+    "gold": [
+      "P015"
+    ],
+    "note": "clipped slang"
+  },
+  {
+    "query": "레베루 주세요",
+    "gold": [
+      "P016"
+    ],
+    "note": "Japanese-derived pronunciation"
+  },
+  {
+    "query": "안전모 5개",
+    "gold": [
+      "P019"
+    ],
+    "note": "standard product name"
+  },
+  {
+    "query": "베니다 12티 두장",
+    "gold": [
+      "P021"
+    ],
+    "note": "slang + thickness notation (12티=12T)"
+  },
+  {
+    "query": "석고 열장",
+    "gold": [
+      "P022"
+    ],
+    "note": "clipped name"
+  },
+  {
+    "query": "몽키 250",
+    "gold": [
+      "P024"
+    ],
+    "note": "clipped name + size"
+  },
+  {
+    "query": "젤 싼 목재 각재",
+    "gold": [
+      "P005",
+      "P006"
+    ],
+    "note": "multiple golds — any lumber square counts"
+  },
+  {
+    "query": "가꾸목 다섯개",
+    "gold": [
+      "P005",
+      "P006"
+    ],
+    "note": "intentional failure — unregistered slang (가꾸목=lumber square); must diagnose as a retrieve-stage loss, ontology alias enrichment candidate"
+  }
 ]

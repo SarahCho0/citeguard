@@ -37,8 +37,8 @@ class Difference:
         if self.kind == "changed":
             return f"{self.path}: {self.expected!r} → {self.actual!r}"
         if self.kind == "missing":
-            return f"{self.path}: 기준선에 있으나 출력에 없음 (기준선 {self.expected!r})"
-        return f"{self.path}: 출력에 새로 등장 ({self.actual!r})"
+            return f"{self.path}: in baseline but missing from output (baseline {self.expected!r})"
+        return f"{self.path}: newly appeared in output ({self.actual!r})"
 
 
 def diff(expected: object, actual: object, path: str = "$") -> list[Difference]:
@@ -88,13 +88,13 @@ class CaseResult:
         if self.status == "pass":
             return f"[PASS] {self.case_id}"
         if self.status == "new":
-            return f"[NEW]  {self.case_id} — 기준선 최초 저장"
+            return f"[NEW]  {self.case_id} — baseline saved for the first time"
         if self.status == "updated":
-            return f"[UPD]  {self.case_id} — 기준선 갱신"
-        lines = [f"[FAIL] {self.case_id} — 차이 {len(self.differences)}건"]
+            return f"[UPD]  {self.case_id} — baseline updated"
+        lines = [f"[FAIL] {self.case_id} — {len(self.differences)} difference(s)"]
         lines += [f"  · {d}" for d in self.differences[:20]]
         if len(self.differences) > 20:
-            lines.append(f"  · … 외 {len(self.differences) - 20}건")
+            lines.append(f"  · … and {len(self.differences) - 20} more")
         return "\n".join(lines)
 
 
@@ -160,6 +160,6 @@ def assert_matches_golden(store: GoldenStore, case_id: str, actual: object) -> N
     result = store.check(case_id, actual)
     if not result.passed:
         raise AssertionError(
-            f"골든 기준선과 불일치.\n{result.summary()}\n"
-            f"의도한 변경이면 {_UPDATE_ENV}=1 로 기준선을 갱신하세요."
+            f"Does not match the golden baseline.\n{result.summary()}\n"
+            f"If this change is intentional, refresh the baseline with {_UPDATE_ENV}=1."
         )

@@ -116,16 +116,16 @@ class GateReport:
         lines = [
             "# Citation Gate Report",
             "",
-            f"- 인용 수: **{self.total}**",
-            f"- 통과율: **{self.pass_rate:.0%}**",
-            f"- 게이트 판정: **{'PASS ✅' if self.ok() else 'BLOCK ⛔'}**",
+            f"- Citations: **{self.total}**",
+            f"- Pass rate: **{self.pass_rate:.0%}**",
+            f"- Gate verdict: **{'PASS ✅' if self.ok() else 'BLOCK ⛔'}**",
             "",
-            "| # | 출처 | p. | 상태 | 유사도 | 인용문 |",
-            "|---|------|----|------|--------|--------|",
+            "| # | Source | p. | Verdict | Similarity | Quote |",
+            "|---|--------|----|---------|------------|-------|",
         ]
         for i, r in enumerate(self.results, 1):
             quote = r.citation.quote if len(r.citation.quote) <= 40 else r.citation.quote[:37] + "…"
-            extra = f" (실제 p.{r.found_page})" if r.found_page else ""
+            extra = f" (actually p.{r.found_page})" if r.found_page else ""
             lines.append(
                 f"| {i} | {r.citation.source_file} | {r.citation.page} "
                 f"| {r.status.value}{extra} | {r.score:.2f} | {quote} |"

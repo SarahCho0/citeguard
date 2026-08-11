@@ -51,7 +51,7 @@ def main() -> int:
         json.dumps(report.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8"
     )
     (out / "eval_report.md").write_text(report.to_markdown(), encoding="utf-8")
-    print(f"\n리포트 저장: {out / 'eval_report.json'}")
+    print(f"\nReport saved: {out / 'eval_report.json'}")
 
     return 0 if case.passed else 1
 

@@ -1,15 +1,15 @@
-"""CiteGuard 라이브 데모 대시보드 (Streamlit).
+"""CiteGuard live demo dashboard (Streamlit).
 
     streamlit run app.py
 
-저장된 리포트를 보여주는 뷰어가 아니라, **라이브러리를 실시간으로 실행**하는 데모다:
+Not a report viewer — this app **runs the library live**:
 
-  🔍 Live Search    — 검색어를 직접 입력 → 하이브리드 파이프라인의 단계별
-                      내부(파싱·채널별 후보·융합 점수)를 실시간 시각화
-  📄 Citation Gate  — 인용문을 직접 수정/추가 → 게이트가 즉시 재판정,
-                      퍼지 임계값 슬라이더로 판정 경계 체험
-  🏅 Golden Watch   — 융합 가중치를 돌려 엔진을 "개조" → 골든 테스트가
-                      랭킹 회귀를 diff로 잡아내는 것을 실시간 확인
+  🔍 Live Search    — type any query, watch every pipeline stage in real time
+                      (parsing, per-channel scores, fused ranking)
+  📄 Citation Gate  — edit citations in place, verdicts recompute instantly;
+                      a fuzzy-threshold slider shows the decision boundary
+  🏅 Golden Watch   — "modify" the engine with a fusion-weight slider and watch
+                      the golden diff pinpoint ranking regressions per query
 """
 
 from __future__ import annotations
@@ -38,10 +38,10 @@ from citeguard import (  # noqa: E402
 
 st.set_page_config(page_title="CiteGuard", page_icon="🛡️", layout="wide")
 st.title("🛡️ CiteGuard — Live Demo")
-st.caption("검증 계층은 결정적이어야 한다 · Same input → same verdict · LLM 호출 0회")
+st.caption("The verification layer must be deterministic · Same input → same verdict · Zero LLM calls")
 
 
-# ---------------------------------------------------------------- 공용 로더
+# ---------------------------------------------------------------- shared loaders
 @st.cache_resource
 def get_products() -> dict[str, dict]:
     rows = json.loads((SEARCH_DEMO / "products.json").read_text(encoding="utf-8"))
@@ -66,10 +66,12 @@ tab_search, tab_gate, tab_golden = st.tabs(
 
 # ================================================================ 🔍 Live Search
 with tab_search:
-    st.subheader("하이브리드 검색 파이프라인 — 내부를 실시간으로 열어본다")
+    st.subheader("Hybrid search pipeline — opened up, live")
     st.caption(
-        "현장 은어·오타·수량이 섞인 주문을 입력하면: 수량 파싱 → 별칭 ∥ BM25 병렬 검색(union) "
-        "→ 점수 융합 Top-5. 각 단계의 중간 산출물을 그대로 보여준다."
+        "Type a field order mixing slang, typos, and quantities (the demo data is Korean "
+        "hardware-store jargon — e.g. 데부꾸로 = cotton work gloves). Each keystroke runs the real "
+        "pipeline: quantity parsing → alias ∥ BM25 parallel retrieval (union pool) → score-fusion Top-5. "
+        "Every intermediate result is shown as-is."
     )
 
     examples = ["데부꾸로 3켤레", "빽색 실리콘 2개", "베니다 12티 두장", "레베루 주세요", "가꾸목 다섯개"]
@@ -78,41 +80,44 @@ with tab_search:
         if col.button(ex, use_container_width=True):
             st.session_state["query"] = ex
 
-    query = st.text_input("주문 입력", value=st.session_state.get("query", "데부꾸로 3켤레"))
+    query = st.text_input("Field order", value=st.session_state.get("query", "데부꾸로 3켤레"))
 
     if query.strip():
         engine = load_engine()
         trace = engine.run(query)
         meta = trace.meta
 
-        st.markdown(f"**Stage 0 — 파싱:** `{query}` → 핵심어 `{meta['parsed']}` (수량·잡음 제거)")
+        st.markdown(
+            f"**Stage 0 — parsing:** `{query}` → core term `{meta['parsed']}` "
+            "(quantities & noise words stripped)"
+        )
 
         col_alias, col_bm25, col_final = st.columns(3)
         with col_alias:
-            st.markdown("**Stage 1a — 별칭 채널** (온톨로지 정확 매칭)")
-            rows = [{"상품": name_of(pid), "점수": s} for pid, s in meta["alias_scored"]]
-            st.dataframe(rows, use_container_width=True, hide_index=True) if rows else st.info("매칭 없음")
+            st.markdown("**Stage 1a — alias channel** (ontology exact match)")
+            rows = [{"product": name_of(pid), "score": s} for pid, s in meta["alias_scored"]]
+            st.dataframe(rows, use_container_width=True, hide_index=True) if rows else st.info("no hits")
         with col_bm25:
-            st.markdown("**Stage 1b — BM25 채널** (char bigram 통계 검색)")
-            rows = [{"상품": name_of(pid), "점수": s} for pid, s in meta["bm25_scored"]]
-            st.dataframe(rows, use_container_width=True, hide_index=True) if rows else st.info("매칭 없음")
+            st.markdown("**Stage 1b — BM25 channel** (char-bigram statistical retrieval)")
+            rows = [{"product": name_of(pid), "score": s} for pid, s in meta["bm25_scored"]]
+            st.dataframe(rows, use_container_width=True, hide_index=True) if rows else st.info("no hits")
         with col_final:
-            st.markdown("**Stage 2 — 융합 Top-5** (별칭 2 : BM25 1 가중)")
+            st.markdown("**Stage 2 — fused Top-5** (alias 2 : BM25 1 weighting)")
             rows = [
-                {"순위": i, "상품": name_of(pid), "융합점수": s}
+                {"rank": i, "product": name_of(pid), "fused score": s}
                 for i, (pid, s) in enumerate(meta["fused_scored"], 1)
             ]
-            st.dataframe(rows, use_container_width=True, hide_index=True) if rows else st.warning("후보 없음 — retrieve 유실")
+            st.dataframe(rows, use_container_width=True, hide_index=True) if rows else st.warning("no candidates — lost at retrieve")
 
         if not trace.final:
             st.error(
-                "두 채널 모두 이 표현을 모릅니다 → **retrieve 단계 유실**. "
-                "실무에서는 이 질의가 온톨로지 별칭 보강 대상으로 큐잉됩니다."
+                "Neither channel knows this expression → **lost at the retrieve stage**. "
+                "In production, this query would be queued for ontology alias enrichment."
             )
 
     st.divider()
-    st.markdown("**라벨셋 전체 평가** — 16건을 지금 이 자리에서 실행")
-    if st.button("▶ 평가 하네스 실행", type="primary"):
+    st.markdown("**Full labelset evaluation** — run all 16 labeled queries right here")
+    if st.button("▶ Run eval harness", type="primary"):
         engine = load_engine()
         labelset = load_labelset(SEARCH_DEMO / "labelset.json")
         report = EvalHarness(engine.run, ks=(1, 3, 5)).evaluate(labelset)
@@ -125,19 +130,20 @@ with tab_search:
 
         for stage, rows in report.failures_by_stage().items():
             st.warning(
-                f"**`{stage}` 단계 유실 {len(rows)}건** — "
+                f"**Lost at `{stage}` — {len(rows)} query(ies)**: "
                 + ", ".join(f'"{r.query}"' for r in rows)
-                + "  → retrieve 유실은 리콜(온톨로지) 문제, rerank 유실은 랭킹 문제: 처방이 다르다"
+                + "  → a retrieve loss is a recall (ontology) problem, a rerank loss is a "
+                "ranking problem: different fixes"
             )
         st.dataframe(
             [
                 {
-                    "질의": r.query,
-                    "정답": ", ".join(name_of(g) for g in sorted(r.gold)),
-                    "Top-1": name_of(r.trace.final[0]) if r.trace.final else "—",
+                    "query": r.query,
+                    "gold": ", ".join(name_of(g) for g in sorted(r.gold)),
+                    "top-1": name_of(r.trace.final[0]) if r.trace.final else "—",
                     "RR": r.rr,
-                    "유실 단계": r.lost_at or "✓",
-                    "비고": r.note,
+                    "lost at": r.lost_at or "✓",
+                    "note": r.note,
                 }
                 for r in report.results
             ],
@@ -147,23 +153,24 @@ with tab_search:
 
 # ================================================================ 📄 Citation Gate
 with tab_gate:
-    st.subheader("인용 검증 게이트 — 인용문을 직접 고쳐보면 판정이 바뀐다")
+    st.subheader("Citation gate — edit a quote and watch the verdict flip")
     st.caption(
-        "LLM 리포트가 주장하는 출처(파일·페이지·인용문)를 원문 코퍼스와 결정적으로 대조한다. "
-        "아래 표를 직접 수정하거나 행을 추가해 보라 — 판정은 즉시, LLM 호출 없이 갱신된다."
+        "Every citation an LLM report claims (file · page · quote) is checked against the "
+        "ingested corpus deterministically. Edit the table below or add rows — verdicts "
+        "recompute instantly, with zero LLM calls."
     )
 
     corpus = get_corpus()
-    with st.expander("📚 인제스트된 원문 코퍼스 보기 (게이트가 아는 전부)"):
+    with st.expander("📚 View the ingested corpus (everything the gate knows)"):
         for f in corpus.files:
             for page, text in sorted(corpus.pages(f).items()):
                 st.markdown(f"**{f} — p.{page}**")
                 st.text(text)
 
     threshold = st.slider(
-        "퍼지 임계값 (이 유사도 이상이면 전사 오차로 보고 통과)",
+        "Fuzzy threshold (similarity at or above this passes as transcription noise)",
         0.50, 1.00, 0.85, 0.01,
-        help="편집거리 기반 유사도 = 1 − d(인용문, 원문 윈도우) / max(길이). MATH.md 참조",
+        help="Edit-distance similarity = 1 − d(quote, corpus window) / max(length). See MATH.md",
     )
 
     default_rows = [
@@ -175,9 +182,9 @@ with tab_gate:
         num_rows="dynamic",
         use_container_width=True,
         column_config={
-            "source_file": st.column_config.SelectboxColumn("출처 파일", options=corpus.files, required=True),
-            "page": st.column_config.NumberColumn("페이지", min_value=1, step=1),
-            "quote": st.column_config.TextColumn("인용문", width="large"),
+            "source_file": st.column_config.SelectboxColumn("source file", options=corpus.files, required=True),
+            "page": st.column_config.NumberColumn("page", min_value=1, step=1),
+            "quote": st.column_config.TextColumn("quote", width="large"),
         },
     )
 
@@ -191,28 +198,28 @@ with tab_gate:
         report = gate.run(citations)
 
         c1, c2, c3 = st.columns(3)
-        c1.metric("인용 수", report.total)
-        c2.metric("통과율", f"{report.pass_rate:.0%}")
-        c3.metric("게이트 판정", "PASS ✅" if report.ok() else "BLOCK ⛔")
+        c1.metric("Citations", report.total)
+        c2.metric("Pass rate", f"{report.pass_rate:.0%}")
+        c3.metric("Gate verdict", "PASS ✅" if report.ok() else "BLOCK ⛔")
 
         STATUS_LABEL = {
-            "verified": "✅ verified — 원문에 정확히 존재",
-            "fuzzy_match": "🟡 fuzzy — 전사 오차 수준으로 유사",
-            "wrong_page": "📄 wrong_page — 실재하나 페이지 표기 오류",
-            "quote_not_found": "⛔ not found — 할루시네이션 의심",
-            "page_not_found": "⛔ 페이지 없음",
-            "file_not_found": "⛔ 파일 없음",
+            "verified": "✅ verified — exact match in source",
+            "fuzzy_match": "🟡 fuzzy — transcription-level similarity",
+            "wrong_page": "📄 wrong_page — quote is real, page label is wrong",
+            "quote_not_found": "⛔ not found — suspected hallucination",
+            "page_not_found": "⛔ page does not exist",
+            "file_not_found": "⛔ file not in corpus",
         }
         st.dataframe(
             [
                 {
-                    "출처": r.citation.source_file,
+                    "source": r.citation.source_file,
                     "p.": str(r.citation.page)
                     if r.found_page is None
-                    else f"{r.citation.page} (실제 {r.found_page})",
-                    "판정": STATUS_LABEL[r.status.value],
-                    "유사도": round(r.score, 2),
-                    "인용문": r.citation.quote,
+                    else f"{r.citation.page} (actually {r.found_page})",
+                    "verdict": STATUS_LABEL[r.status.value],
+                    "similarity": round(r.score, 2),
+                    "quote": r.citation.quote,
                 }
                 for r in report.results
             ],
@@ -221,19 +228,21 @@ with tab_gate:
         )
         if not report.ok():
             st.error(
-                f"검증 실패 인용 {len(report.failures)}건 — 이 리포트는 발행이 차단됩니다. "
-                "실무 파이프라인에서는 이 게이트가 리포트 렌더링 앞단에 위치합니다."
+                f"{len(report.failures)} citation(s) failed verification — this report is "
+                "blocked from publishing. In production, this gate sits in front of the "
+                "report renderer."
             )
 
 # ================================================================ 🏅 Golden Watch
 with tab_golden:
-    st.subheader("골든 회귀 감시 — 엔진을 '개조'하면 무엇이 조용히 바뀌는지 잡아낸다")
+    st.subheader("Golden regression watch — 'modify' the engine, catch what silently changes")
     st.caption(
-        "융합 가중치(별칭 채널 신뢰도)를 바꿔 보라. 지표는 그대로여도 랭킹이 바뀔 수 있고, "
-        "골든 diff는 그 변화를 질의 단위 경로로 정확히 짚어낸다 — 회귀 테스트가 지표만 봐서는 안 되는 이유."
+        "Move the fusion weight (how much the alias channel is trusted). Metrics can stay "
+        "flat while rankings shift — and the golden diff pinpoints exactly which query's "
+        "which rank changed. This is why regression tests must not watch metrics alone."
     )
 
-    weight = st.slider("별칭 채널 가중치 (기준선은 2.0)", 0.0, 4.0, 2.0, 0.25)
+    weight = st.slider("Alias channel weight (baseline: 2.0)", 0.0, 4.0, 2.0, 0.25)
 
     engine = load_engine()
     engine.ALIAS_WEIGHT = weight
@@ -252,21 +261,21 @@ with tab_golden:
     m1, m2, m3 = st.columns(3)
     m1.metric("Hit@1", f"{report.hit_rate(1):.1%}")
     m2.metric("MRR", f"{report.mrr:.3f}")
-    m3.metric("골든 판정", "PASS ✅" if not differences else f"FAIL ⛔ ({len(differences)} diffs)")
+    m3.metric("Golden verdict", "PASS ✅" if not differences else f"FAIL ⛔ ({len(differences)} diffs)")
 
     if not differences:
-        st.success("기준선과 완전 동일 — 랭킹 하나까지 회귀 없음.")
+        st.success("Identical to baseline — not a single ranking regressed.")
     else:
-        st.error(f"기준선 대비 차이 {len(differences)}건 — 어떤 질의의 몇 번째 순위가 바뀌었는지:")
+        st.error(f"{len(differences)} difference(s) vs baseline — which query, which rank:")
         st.dataframe(
             [
-                {"경로": d.path, "기준선": str(d.expected), "현재": str(d.actual), "유형": d.kind}
+                {"path": d.path, "baseline": str(d.expected), "current": str(d.actual), "kind": d.kind}
                 for d in differences
             ],
             use_container_width=True,
             hide_index=True,
         )
         st.caption(
-            "의도한 개선이라면 `CITEGUARD_UPDATE_GOLDEN=1`로 새 기준선을 승인한다 — "
-            "갱신은 항상 명시적, 조용한 드리프트는 항상 실패."
+            "If this change is intentional, approve a new baseline with "
+            "`CITEGUARD_UPDATE_GOLDEN=1` — updates are always explicit, silent drift always fails."
         )

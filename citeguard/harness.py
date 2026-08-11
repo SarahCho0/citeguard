@@ -61,7 +61,7 @@ def load_labelset(path: str | Path) -> list[LabeledQuery]:
     labelset = []
     for row in data:
         if not row.get("query") or not row.get("gold"):
-            raise ValueError(f"라벨셋 행에 query/gold가 필요합니다: {row}")
+            raise ValueError(f"labelset row needs query/gold: {row}")
         labelset.append(
             LabeledQuery(
                 query=row["query"],
@@ -149,25 +149,25 @@ class EvalReport:
         lines = [
             "# Retrieval Eval Report",
             "",
-            f"- 라벨셋: **{self.total}건**",
+            f"- Labelset: **{self.total} queries**",
             "- " + " · ".join(f"**Hit@{k} {self.hit_rate(k):.1%}**" for k in self.ks)
             + f" · **MRR {self.mrr:.3f}**",
             "",
         ]
         grouped = self.failures_by_stage()
         if grouped:
-            lines.append("## 실패 진단 (단계별)")
+            lines.append("## Failure diagnosis (by stage)")
             lines.append("")
             for stage, rows in sorted(grouped.items()):
-                lines.append(f"### `{stage}` 단계에서 유실 — {len(rows)}건")
+                lines.append(f"### Lost at `{stage}` — {len(rows)} query(ies)")
                 for r in rows:
                     lines.append(
-                        f"- \"{r.query}\" → 정답 {sorted(r.gold)}, "
-                        f"최종 Top-5 {r.trace.final[:5]}"
+                        f"- \"{r.query}\" → gold {sorted(r.gold)}, "
+                        f"final Top-5 {r.trace.final[:5]}"
                     )
                 lines.append("")
         else:
-            lines.append("실패 질의 없음 🎉")
+            lines.append("No failing queries 🎉")
         return "\n".join(lines)
 
 

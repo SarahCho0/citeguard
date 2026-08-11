@@ -33,7 +33,7 @@ def main() -> int:
     print()
     for row, result in zip(rows, report.results):
         mark = "✅" if result.passed else "⛔"
-        print(f"{mark} 기대: {row['expect']:<55} 판정: {result.status.value}")
+        print(f"{mark} expected: {row['expect']:<58} verdict: {result.status.value}")
 
     out = DEMO_DIR / "out"
     out.mkdir(exist_ok=True)
@@ -41,7 +41,7 @@ def main() -> int:
         json.dumps(report.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8"
     )
     (out / "gate_report.md").write_text(report.to_markdown(), encoding="utf-8")
-    print(f"\n리포트 저장: {out / 'gate_report.json'}")
+    print(f"\nReport saved: {out / 'gate_report.json'}")
 
     # 오류 인용이 섞여 있으므로 게이트는 BLOCK이어야 정상
     return 0 if not report.ok() else 1
