@@ -1,14 +1,18 @@
-"""CiteGuard — LLM 애플리케이션 검증 툴킷.
+"""CiteGuard — verification toolkit for LLM applications.
 
-세 개의 독립 모듈로 구성된다:
+Three independent modules:
 
-1. Citation Gate  — LLM 리포트의 출처(파일·페이지·인용문)를 원문과
-                    결정적 문자열 대조로 검증 (LLM 호출 0회)
-2. Eval Harness   — 라벨셋 기반 Hit@K/MRR 평가 + 단계별 오류 진단
-3. Golden Runner  — 파이프라인 출력의 회귀를 diff로 잡는 골든 테스트
+1. Citation Gate  — verifies the sources an LLM report claims (file ·
+                    page · quote) against the ingested corpus by
+                    deterministic string comparison (zero LLM calls)
+2. Eval Harness   — labeled-set Hit@K/MRR evaluation + stage-level
+                    error diagnosis
+3. Golden Runner  — golden tests that catch pipeline output regressions
+                    as diffs
 
-설계 원칙: 검증 계층은 결정적이어야 한다.
-LLM으로 LLM을 검증하면 검증 자체가 비결정적이 되어 감사가 불가능해진다.
+Design principle: the verification layer must be deterministic.
+Verifying an LLM with another LLM makes the verification itself
+probabilistic — and therefore unauditable.
 """
 
 from .corpus import Corpus

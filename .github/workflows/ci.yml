@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      - name: Test suite (430 tests, incl. metric-axiom property tests)
+        run: pytest -q
+
+      - name: Run demos end-to-end
+        run: |
+          python examples/citation_demo/run_gate.py
+          python examples/search_demo/run_eval.py
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Web demo data is in sync with example datasets
+        run: |
+          python scripts/build_demo_data.py
+          git diff --exit-code docs/data.js
+
+      - name: Web demo JS engine parity vs Python
+        run: python scripts/check_js_parity.py

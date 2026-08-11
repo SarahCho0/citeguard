@@ -1,142 +1,155 @@
-# CiteGuard의 수학적 설계 근거
+# The Mathematics Behind CiteGuard
 
-이 문서는 CiteGuard의 각 모듈이 **어떤 수학 위에 서 있고, 그 수학이 왜
-공학적 결과(정확성·성능·감사가능성)로 이어지는지**를 코드 위치와 함께 설명한다.
+This document explains the mathematical structure each module stands on, and
+why that structure turns into engineering guarantees — correctness,
+performance, auditability — with pointers into the code.
 
-> 요약 한 줄: **"검증 계층의 신뢰성은 확률이 아니라 구조에서 나온다"** —
-> CiteGuard는 동치관계, 거리공간, 확률적 랭킹 이론이라는 세 개의 수학적
-> 기둥 위에 검증을 올려, 같은 입력에 같은 판정이 나온다는 것을 보장한다.
-
----
-
-## 1. 텍스트 정규화 = 동치관계와 정규형 (Equivalence Relation & Canonical Form)
-
-**위치:** `citeguard/normalize.py` · 검증 테스트: `tests/test_normalize.py::test_idempotent`
-
-"같은 문장인데 표기만 다른" 문제를 수학적으로 정의하면: 문자열 집합 Σ\* 위에
-**동치관계** `x ~ y ⟺ normalize(x) = normalize(y)` 를 정의하는 것이다.
-
-- `normalize`는 **멱등(idempotent) 사상** π : Σ\* → Σ\* 이다 (π∘π = π —
-  테스트로 고정). 멱등 사상의 상(image)은 각 동치류의 **정규형(canonical
-  representative)** 집합이 된다.
-- 인용 검증에서 "인용문이 원문에 있는가"는 원래 동치류 수준의 질문
-  (표기 변형을 무시한 포함 여부)인데, 정규형으로 사영한 뒤 비교하면
-  **동치류 판정이 단순 문자열 포함 판정으로 환원**된다.
-- 공학적 결과: 전각/반각·스마트따옴표·공백 변형이 전부 하나의 대표원으로
-  붕괴하므로, 이후의 모든 비교가 결정적이고 재현 가능해진다.
-
-**면접 한 줄:** "정규화를 '보기 좋게 다듬기'가 아니라 동치관계의 정규형
-선택으로 정의했기 때문에, 어떤 표기 변형까지 같은 문장으로 볼 것인지가
-코드가 아니라 관계의 정의로 명시됩니다."
-
-## 2. 편집거리 = 문자열 공간의 거리함수 (Metric Space)
-
-**위치:** `citeguard/similarity.py` · 공리 검증: `tests/test_similarity.py::TestMetricAxioms`
-
-퍼지 매칭에 쓰는 Levenshtein 편집거리 d는 문자열 집합 위의 **거리함수(metric)** 다:
-
-| 공리 | 의미 | 근거 |
-|------|------|------|
-| d(a,b) = 0 ⟺ a = b | 비퇴화성 | 편집 0회 = 동일 문자열 |
-| d(a,b) = d(b,a) | 대칭성 | 삽입↔삭제가 서로 역연산 |
-| d(a,c) ≤ d(a,b) + d(b,c) | **삼각부등식** | a→b, b→c 편집 스크립트를 이어붙이면 a→c |
-
-이 공리들은 문서에만 있는 게 아니라 **pytest 파라미터화 테스트로 실측 검증**된다
-(표본 문자열 전 조합에 대해 대칭성·삼각부등식·길이 하한을 확인).
-
-거리공간 구조가 주는 두 개의 **증명 가능한 최적화** (`gate.py::_best_window`):
-
-1. **길이 하한 프루닝:** 편집 1회는 길이를 최대 1 바꾸므로
-   |len(a)−len(b)| ≤ d(a,b). 길이 차가 이미 cap을 넘는 윈도우는
-   DP를 돌리지 않고 제외해도 **결과가 바뀌지 않음이 증명된다.**
-2. **행 최솟값 단조성에 의한 조기 중단:** Wagner–Fischer DP 표에서
-   i행의 최솟값은 이후 행에서 감소하지 않는다. 따라서 행 최솟값이
-   cap을 넘는 순간 "d > cap" 판정은 이미 확정이다.
-   → 슬라이딩 윈도우 탐색을 branch-and-bound로 돌려도
-   **전수 탐색과 동일한 최솟값**을 반환한다
-   (`tests/test_similarity.py::test_cap_never_flips_threshold_decision`이 이 성질을 고정).
-
-**면접 한 줄:** "퍼지 매칭 가지치기가 휴리스틱이면 검증 계층의 결정성이
-깨집니다. 편집거리가 거리공간 공리를 만족하기 때문에 가지치기 후에도
-결과가 전수 탐색과 동일함을 보장할 수 있고, 그 공리 자체를 테스트로
-고정해 두었습니다."
-
-## 3. BM25 = 확률적 랭킹 원리와 포화 함수 (Probability Ranking Principle)
-
-**위치:** `examples/search_demo/search.py::BM25`
-
-BM25는 임의의 공식이 아니라 **확률적 랭킹 원리(PRP)** — "문서를 관련성
-확률의 내림차순으로 제시하는 것이 최적" — 에서 유도된 랭킹 함수다.
-
-- **IDF 항** `log(1 + (N − df + 0.5)/(df + 0.5))` 는 Robertson–Spärck Jones
-  가중치의 평활화(smoothing) 근사: "해당 토큰이 관련 문서에 나타날 오즈 대
-  비관련 문서에 나타날 오즈"의 로그비. 정보이론적으로는 희귀 토큰일수록
-  자기정보량(-log p)이 커서 판별력이 높다는 사실의 정량화다.
-- **TF 포화 항** `tf·(k1+1)/(tf + k1·norm)` 은 tf에 대해 **단조증가·오목
-  (concave)·유계** 인 함수다: tf → ∞일 때 (k1+1)·idf로 수렴. 즉 같은 토큰의
-  반복 출현은 한계효용이 체감한다 — "장갑"이 10번 나온 문서가 1번 나온
-  문서보다 10배 관련 있는 게 아니라는 직관의 함수적 표현.
-- **길이 정규화** `(1 − b + b·len/avg_len)` 은 긴 문서가 우연히 토큰을 더
-  많이 포함하는 편향의 보정 (b로 보정 강도를 보간).
-
-**면접 한 줄:** "BM25의 세 항을 각각 오즈비 근사, 오목 포화 함수, 길이
-편향 보정으로 설명할 수 있고, 그래서 k1·b 튜닝이 무엇을 움직이는지
-수학적으로 압니다."
-
-## 4. char n-gram = 오타에 강건한 국소성 (Locality)
-
-**위치:** `examples/search_demo/search.py::char_ngrams`
-
-문자 bigram 분해는 문자열을 **겹치는 국소 조각의 다중집합(multiset)** 으로
-사영하는 것이다. 오타 1글자는 그 주변 최대 n개의 n-gram만 파괴하므로
-(국소성), 나머지 조각의 겹침이 유지된다 — "빽색"(오타)이 "백색"과 여전히
-후보로 회수되는 이유. 형태소 분석기 없는 한국어 검색에서 이 성질은
-토크나이저 오류라는 실패 모드 자체를 제거한다.
-
-## 5. 랭킹 지표 = 지시함수의 기대값 (Indicator Expectation)
-
-**위치:** `citeguard/metrics.py`
-
-- **Hit@K** 는 질의별 지시확률변수 1[정답 ∈ Top-K]의 표본평균 —
-  즉 "사용자가 상위 K개 안에서 정답을 만날 확률"의 불편추정량.
-- **MRR** 은 역순위 1/rank의 평균. 역수 변환은 순위 개선의 가치를
-  상위권에 집중시킨다 (1위→2위 하락은 0.5 손실, 9위→10위는 0.011 손실) —
-  Top-1이 중요한 주문 UX와 정확히 정렬된 손실 구조.
-
-## 6. 점수 융합 = 스케일 불변 가중 결합 (Scale-Invariant Fusion)
-
-**위치:** `examples/search_demo/search.py::HybridSearch._fuse`
-
-별칭 채널(사전 매칭 점수)과 BM25 채널(통계 점수)은 **서로 다른 단위의
-공간**에 산다. 각 채널을 채널 내 최댓값으로 나누어 [0,1]로 사영한 뒤
-가중합하면, 융합 결과가 각 채널 점수의 **양의 스케일 변환에 불변**이
-된다 — 채널 하나의 점수 스케일이 바뀌어도(예: BM25 파라미터 튜닝)
-융합 순위 체계가 무너지지 않는다.
-
-## 7. 골든 diff = 순서 라벨 트리의 구조적 동등성 (Labeled Tree Equality)
-
-**위치:** `citeguard/golden.py::diff`
-
-JSON 값은 **귀납적으로 정의된 순서 라벨 트리**다 (리프 = 스칼라,
-내부 노드 = 객체/배열). `diff`는 이 귀납 구조를 따라가는 **구조적 재귀
-(structural recursion)** 로 두 트리를 비교한다 — 순서 트리에서는 구조적
-동등성이 곧 트리 동형성이므로, 이 비교는 "두 실행 결과가 동형인가"에
-대한 결정 절차다. 차이가 있으면 루트→리프 경로(`$.metrics.hit@1`)로
-위치를 특정해 반환하므로, 회귀가 **어느 부분 트리에서** 발생했는지가
-증명서처럼 따라 나온다.
+> One-line summary: **the reliability of a verification layer comes from
+> structure, not probability.** CiteGuard builds its verdicts on equivalence
+> relations, metric spaces, and probabilistic ranking theory, which is what
+> guarantees that the same input always produces the same verdict.
 
 ---
 
-## 설계 철학: 왜 검증 계층에 LLM을 쓰지 않는가
+## 1. Text normalization = equivalence relations & canonical forms
 
-LLM으로 LLM을 검증하면 검증 함수 자체가 확률적이 되어
-`검증(x)`이 실행마다 다를 수 있다 — 감사(audit)가 불가능하다.
-CiteGuard의 모든 판정 함수는 위의 수학적 구조(동치관계·거리·트리 동등성)
-위에 정의된 **결정적 함수**이므로:
+**Where:** `citeguard/normalize.py` · pinned by `tests/test_normalize.py::test_idempotent`
 
-1. 같은 입력 → 항상 같은 판정 (재현성)
-2. 판정 근거를 경로·거리·매칭 위치로 제시 가능 (설명가능성)
-3. 성능 최적화(가지치기)가 결과를 바꾸지 않음을 증명 가능 (신뢰성)
+"The same sentence, written differently" has a precise definition: an
+**equivalence relation** on the set of strings Σ\*,
+`x ~ y ⟺ normalize(x) = normalize(y)`.
 
-이것이 "수학 기반 설계"의 실질적 의미다 — 수식을 장식으로 붙인 것이
-아니라, **시스템의 보장(guarantee)이 수학적 구조에서 파생**된다.
+- `normalize` is an **idempotent map** π : Σ\* → Σ\* (π∘π = π — pinned by a
+  test). The image of an idempotent map is a set of **canonical
+  representatives**, one per equivalence class.
+- "Does this quote appear in the source?" is really a question about
+  equivalence classes (containment up to notation). Projecting both sides to
+  canonical form **reduces class-level equality to plain substring matching.**
+- Engineering consequence: full-width/half-width variants, smart quotes, and
+  whitespace runs all collapse to one representative, so every later
+  comparison is deterministic and reproducible.
+
+**Interview one-liner:** "Normalization isn't cosmetic cleanup — it selects a
+canonical representative of an equivalence class, so *which* notational
+variants count as 'the same sentence' is defined by a relation, not buried in
+code."
+
+## 2. Edit distance = a metric on the space of strings
+
+**Where:** `citeguard/similarity.py` · axioms verified by `tests/test_similarity.py::TestMetricAxioms`
+
+The Levenshtein distance d used for fuzzy matching is a **metric**:
+
+| Axiom | Meaning | Why it holds |
+|-------|---------|--------------|
+| d(a,b) = 0 ⟺ a = b | identity of indiscernibles | zero edits = identical strings |
+| d(a,b) = d(b,a) | symmetry | insertions and deletions are mutually inverse |
+| d(a,c) ≤ d(a,b) + d(b,c) | **triangle inequality** | concatenate the a→b and b→c edit scripts |
+
+These axioms are not just documented — they are **checked empirically by
+parametrized pytest property tests** (symmetry, triangle inequality, and the
+length bound over all sample pairs).
+
+The metric structure yields two **provably safe optimizations**
+(`gate.py::_best_window`):
+
+1. **Length-bound pruning:** one edit changes length by at most 1, so
+   |len(a)−len(b)| ≤ d(a,b). Any window whose length gap already exceeds the
+   cap can be skipped **without changing the result.**
+2. **Early exit via row-minimum monotonicity:** in the Wagner–Fischer DP
+   table, the minimum of row i never decreases in later rows. The moment a
+   row minimum exceeds the cap, "d > cap" is final.
+   → The two-pass coarse-to-fine window search (coarse scan for a tight
+   bound, then an exhaustive stride-1 scan pruned by it) returns **exactly
+   the same minimum as an uncapped exhaustive scan**
+   (`tests/test_similarity.py::test_cap_never_flips_threshold_decision` pins
+   the underlying property).
+
+**Interview one-liner:** "If fuzzy-match pruning were a heuristic, the
+verification layer would lose determinism. Because edit distance satisfies
+the metric axioms, I can prove the pruned search returns the same result as
+exhaustive search — and the axioms themselves are pinned by property tests."
+
+## 3. BM25 = the probability ranking principle & saturation
+
+**Where:** `examples/search_demo/search.py::BM25`
+
+BM25 is not an arbitrary formula — it derives from the **Probability Ranking
+Principle** (present documents in decreasing order of relevance probability):
+
+- **IDF term** `log(1 + (N − df + 0.5)/(df + 0.5))` is a smoothed
+  Robertson–Spärck Jones weight: the log odds ratio of a token appearing in
+  relevant vs non-relevant documents. Information-theoretically, rarer tokens
+  carry more self-information (−log p), hence more discriminating power.
+- **TF saturation** `tf·(k1+1)/(tf + k1·norm)` is **monotone increasing,
+  concave, and bounded** in tf, converging to (k1+1)·idf. Repeated
+  occurrences of the same token have diminishing returns — a document
+  mentioning "glove" ten times is not ten times more relevant.
+- **Length normalization** `(1 − b + b·len/avg_len)` corrects the bias of
+  long documents accidentally containing more tokens (b interpolates the
+  correction strength).
+
+**Interview one-liner:** "I can explain each of BM25's three factors as an
+odds-ratio approximation, a bounded concave saturation, and a length-bias
+correction — so I know exactly what tuning k1 and b moves."
+
+## 4. Char n-grams = locality, robustness to typos
+
+**Where:** `examples/search_demo/search.py::char_ngrams`
+
+Splitting a string into character bigrams projects it onto a **multiset of
+overlapping local fragments.** A single-character typo destroys at most n
+n-grams around it (locality); every other fragment still overlaps. That is
+why the typo "빽색" still retrieves "백색" (white) products. For Korean
+retrieval without a morphological analyzer, this removes tokenizer error as
+a failure mode entirely.
+
+## 5. Ranking metrics = expectations of indicator variables
+
+**Where:** `citeguard/metrics.py`
+
+- **Hit@K** is the sample mean of the indicator 1[gold ∈ Top-K] — an
+  unbiased estimate of "the probability a user finds the right answer in the
+  top K."
+- **MRR** averages reciprocal ranks 1/rank. The reciprocal transform
+  concentrates value at the top (dropping from rank 1→2 costs 0.5; from
+  9→10 costs 0.011) — a loss structure aligned with Top-1-centric UX.
+
+## 6. Score fusion = scale-invariant weighted combination
+
+**Where:** `examples/search_demo/search.py::HybridSearch._fuse`
+
+The alias channel (dictionary scores) and the BM25 channel (statistical
+scores) live in **different units.** Normalizing each channel by its own
+maximum projects both into [0,1]; the weighted sum is then **invariant under
+positive rescaling of either channel** — retuning BM25 parameters cannot
+silently destabilize the fused ranking.
+
+## 7. Golden diff = structural equality of ordered labeled trees
+
+**Where:** `citeguard/golden.py::diff`
+
+JSON values are **inductively defined ordered labeled trees** (leaves =
+scalars, internal nodes = objects/arrays). `diff` compares two trees by
+**structural recursion** over that inductive definition — and for ordered
+trees, structural equality *is* tree isomorphism, so the comparison is a
+decision procedure for "are these two runs isomorphic?" Every difference is
+reported with its root-to-leaf path (`$.metrics.hit@1`), so a regression
+carries a certificate of **exactly which subtree changed.**
+
+---
+
+## Design stance: why no LLM in the verification layer
+
+Verifying an LLM with another LLM makes the verifier itself probabilistic:
+`verify(x)` can differ between runs, which makes auditing impossible. Every
+verdict function in CiteGuard is a **deterministic function** defined on the
+mathematical structures above (equivalence relations, metrics, tree
+equality), which buys:
+
+1. Same input → same verdict, always (reproducibility)
+2. Verdicts come with evidence — paths, distances, matched spans (explainability)
+3. Performance optimizations provably cannot change results (trustworthiness)
+
+That is what "math-grounded design" means here — not formulas as decoration,
+but **system guarantees derived from mathematical structure.**

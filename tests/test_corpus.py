@@ -1,4 +1,4 @@
-"""Corpus 로딩·조회 테스트."""
+"""Corpus loading and lookup tests."""
 
 import json
 

@@ -1,4 +1,4 @@
-"""EvalHarness — 지표 집계와 단계별 오류 진단 테스트."""
+"""EvalHarness — metric aggregation and stage-level diagnosis tests."""
 
 import json
 
@@ -8,7 +8,7 @@ from citeguard import EvalHarness, LabeledQuery, StageTrace, load_labelset
 
 
 def make_pipeline(routing: dict[str, StageTrace]):
-    """질의 → 미리 정의된 궤적을 돌려주는 가짜 파이프라인."""
+    """Fake pipeline returning a predefined trace per query."""
     def run(query: str) -> StageTrace:
         return routing[query]
     return run
@@ -45,7 +45,7 @@ class TestMetricsAggregation:
 
 class TestStageDiagnosis:
     def test_lost_at_retrieve(self):
-        # 정답이 검색 단계부터 아예 없음 → 리콜 문제
+        # gold absent from retrieve onward → a recall problem
         routing = {"q": StageTrace([("retrieve", ["x", "y"]), ("rerank", ["x"])])}
         report = EvalHarness(make_pipeline(routing), ks=(1,)).evaluate(
             [LabeledQuery("q", frozenset({"gold"}))]
@@ -53,7 +53,7 @@ class TestStageDiagnosis:
         assert report.results[0].lost_at == "retrieve"
 
     def test_lost_at_rerank(self):
-        # 검색은 성공했는데 재랭킹에서 탈락 → 랭킹 문제
+        # retrieved fine but dropped in rerank → a ranking problem
         routing = {"q": StageTrace([("retrieve", ["gold", "x"]), ("rerank", ["x"])])}
         report = EvalHarness(make_pipeline(routing), ks=(1,)).evaluate(
             [LabeledQuery("q", frozenset({"gold"}))]
@@ -61,7 +61,7 @@ class TestStageDiagnosis:
         assert report.results[0].lost_at == "rerank"
 
     def test_lost_beyond_k(self):
-        # 모든 단계에 정답이 있으나 최종 순위가 K 밖 → rank>K로 진단
+        # gold survives every stage but ranks outside K → diagnosed as rank>K
         routing = {"q": StageTrace([("retrieve", ["x", "y", "gold"]), ("rerank", ["x", "y", "gold"])])}
         report = EvalHarness(make_pipeline(routing), ks=(1, 2)).evaluate(
             [LabeledQuery("q", frozenset({"gold"}))]

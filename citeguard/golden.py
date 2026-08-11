@@ -1,17 +1,18 @@
-"""골든 테스트 러너 (Golden Test Runner).
+"""Golden-test regression runner.
 
-LLM 파이프라인의 출력은 프롬프트·모델·데이터가 바뀔 때마다 조용히 변한다.
-골든 테스트는 "검증된 출력"을 기준선(golden)으로 저장해 두고,
-이후 실행 결과를 기준선과 재귀 비교해 **의도치 않은 회귀를 diff로 잡아낸다.**
+LLM pipeline outputs drift silently whenever prompts, models, or data
+change. Golden tests pin a verified output as the baseline and compare
+every later run against it recursively, **catching unintended regressions
+as a diff.**
 
-사용 패턴 (pytest):
+Usage pattern (pytest):
     store = GoldenStore("tests/golden")
     def test_search_regression():
-        actual = run_pipeline("데부꾸로 3켤레")
+        actual = run_pipeline("데부꾸로 3켤레")  # "debukkuro" = work-glove slang
         assert_matches_golden(store, "debukuro", actual)
 
-기준선 갱신은 명시적으로만:
-    CITEGUARD_UPDATE_GOLDEN=1 pytest        # 의도한 변경을 새 기준선으로 승인
+Baselines update only explicitly:
+    CITEGUARD_UPDATE_GOLDEN=1 pytest        # approve an intentional change
 """
 
 from __future__ import annotations
@@ -26,11 +27,11 @@ _UPDATE_ENV = "CITEGUARD_UPDATE_GOLDEN"
 
 @dataclass(frozen=True)
 class Difference:
-    """기준선과 실제 출력의 차이 1건."""
+    """One difference between the baseline and the actual output."""
 
-    path: str        # 예: "results[2].status"
-    expected: object  # 기준선 값 (없으면 None)
-    actual: object    # 실제 값 (없으면 None)
+    path: str        # e.g. "results[2].status"
+    expected: object  # baseline value (None if absent)
+    actual: object    # actual value (None if absent)
     kind: str         # "changed" | "missing" | "added"
 
     def __str__(self) -> str:
@@ -42,7 +43,7 @@ class Difference:
 
 
 def diff(expected: object, actual: object, path: str = "$") -> list[Difference]:
-    """JSON 호환 값 두 개를 재귀 비교해 차이 목록을 반환한다."""
+    """Recursively compare two JSON-compatible values and list differences."""
     if isinstance(expected, dict) and isinstance(actual, dict):
         differences = []
         for key in sorted(set(expected) | set(actual)):
@@ -74,7 +75,7 @@ def diff(expected: object, actual: object, path: str = "$") -> list[Difference]:
 
 @dataclass
 class CaseResult:
-    """골든 케이스 1건의 비교 결과."""
+    """Comparison result for one golden case."""
 
     case_id: str
     status: str                   # "pass" | "fail" | "new" | "updated"
@@ -99,10 +100,10 @@ class CaseResult:
 
 
 class GoldenStore:
-    """골든 기준선을 JSON 파일로 보관하는 저장소.
+    """Stores golden baselines as JSON files.
 
-    케이스 1건 = 파일 1개(<case_id>.json). sort_keys로 저장해
-    git diff가 사람이 읽을 수 있는 형태가 되도록 한다.
+    One case = one file (<case_id>.json), written with sort_keys so that
+    git diffs stay human-readable.
     """
 
     def __init__(self, root: str | Path) -> None:
@@ -131,13 +132,14 @@ class GoldenStore:
             return []
         return sorted(p.stem for p in self.root.glob("*.json"))
 
-    # ---------- 비교 ----------
+    # ---------- comparison ----------
 
     def check(self, case_id: str, actual: object, update: bool | None = None) -> CaseResult:
-        """실제 출력을 기준선과 비교한다.
+        """Compare an actual output against the baseline.
 
-        update가 None이면 CITEGUARD_UPDATE_GOLDEN 환경변수를 따른다.
-        기준선이 없으면 저장하고 "new"를 반환한다 (최초 실행 부트스트랩).
+        When update is None, the CITEGUARD_UPDATE_GOLDEN env var decides.
+        If no baseline exists yet, it is saved and "new" is returned
+        (first-run bootstrap).
         """
         if update is None:
             update = os.environ.get(_UPDATE_ENV, "") == "1"
@@ -156,7 +158,7 @@ class GoldenStore:
 
 
 def assert_matches_golden(store: GoldenStore, case_id: str, actual: object) -> None:
-    """pytest용 헬퍼 — 기준선과 다르면 diff를 담은 AssertionError를 던진다."""
+    """pytest helper — raises AssertionError with a diff when the baseline differs."""
     result = store.check(case_id, actual)
     if not result.passed:
         raise AssertionError(

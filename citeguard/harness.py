@@ -1,17 +1,18 @@
-"""검색 평가 하네스 (Retrieval Eval Harness).
+"""Retrieval evaluation harness.
 
-라벨셋(질의 → 정답 상품/문서 ID)을 검색 파이프라인에 흘려보내
-Hit@K·MRR을 집계하고, 실패 질의는 **어느 단계에서 정답이 유실됐는지**
-(stage-level error diagnosis)까지 자동 진단한다.
+Feeds a labeled set (query → gold product/document IDs) through a search
+pipeline, aggregates Hit@K / MRR, and for every failing query diagnoses
+**at which stage the gold answer was lost** (stage-level error diagnosis).
 
-파이프라인은 단계별 후보 목록을 담은 StageTrace를 반환하기만 하면 되므로
-검색 엔진 구현과 완전히 분리된다(엔진 교체 가능 구조).
+The pipeline only needs to return a StageTrace of per-stage candidate
+lists, so the harness is fully decoupled from the engine implementation
+(engines are swappable).
 
-단계별 진단 로직:
-  후보군은 단계를 거치며 좁혀지는 깔때기(funnel) 구조라고 가정한다.
-  정답이 처음으로 사라진 단계 = 오류가 발생한 단계.
-  예) retrieve에는 있었는데 rerank에 없다 → 재랭킹 단계의 문제.
-      retrieve부터 없다 → 검색(리콜) 단계의 문제.
+Stage diagnosis logic:
+  Candidates are assumed to narrow through a funnel of stages.
+  The first stage where the gold answer disappears = the failing stage.
+  e.g. present in retrieve but missing in rerank → a ranking problem;
+       missing from retrieve onward → a recall problem.
 """
 
 from __future__ import annotations
@@ -26,13 +27,13 @@ from .metrics import hit_at_k, mrr, reciprocal_rank
 
 @dataclass
 class StageTrace:
-    """질의 1건이 파이프라인을 통과한 궤적.
+    """The trajectory of one query through the pipeline.
 
-    stages: (단계 이름, 그 단계의 후보 ID 목록) — 파이프라인 순서대로.
-            마지막 단계가 최종 랭킹 결과다.
-    meta:   디버깅용 부가 정보 (예: 파싱 결과, 채널별 후보).
-            병렬 채널(alias/BM25 등)은 깔때기 단계가 아니므로
-            stages가 아닌 meta에 기록한다.
+    stages: (stage name, candidate ID list for that stage) — in pipeline
+            order. The last stage is the final ranking.
+    meta:   free-form debug info (e.g. parse output, per-channel hits).
+            Parallel channels (alias/BM25 etc.) are not funnel stages, so
+            they belong in meta, not stages.
     """
 
     stages: list[tuple[str, list[str]]]
@@ -40,7 +41,7 @@ class StageTrace:
 
     @property
     def final(self) -> list[str]:
-        """최종 랭킹 결과 (마지막 단계의 후보 목록)."""
+        """The final ranking (candidate list of the last stage)."""
         if not self.stages:
             return []
         return self.stages[-1][1]
@@ -48,7 +49,7 @@ class StageTrace:
 
 @dataclass(frozen=True)
 class LabeledQuery:
-    """라벨셋의 1행: 실제 현장 질의와 정답 ID 집합."""
+    """One labelset row: a real-world query and its gold ID set."""
 
     query: str
     gold: frozenset[str]
@@ -56,7 +57,7 @@ class LabeledQuery:
 
 
 def load_labelset(path: str | Path) -> list[LabeledQuery]:
-    """[{"query": "...", "gold": ["P001"], "note": "..."}] 형태의 JSON 로드."""
+    """Load JSON shaped like [{"query": "...", "gold": ["P001"], "note": "..."}]."""
     data = json.loads(Path(path).read_text(encoding="utf-8"))
     labelset = []
     for row in data:
@@ -74,14 +75,14 @@ def load_labelset(path: str | Path) -> list[LabeledQuery]:
 
 @dataclass
 class QueryResult:
-    """질의 1건의 평가 결과."""
+    """Evaluation result for one query."""
 
     query: str
     gold: frozenset[str]
     trace: StageTrace
-    hits: dict[int, bool]        # k → Hit@K 여부
+    hits: dict[int, bool]        # k → Hit@K
     rr: float                    # reciprocal rank
-    lost_at: str | None          # 정답이 유실된 단계 이름 (성공 시 None)
+    lost_at: str | None          # stage where the gold answer was lost (None on success)
     note: str = ""
 
     @property
@@ -91,7 +92,7 @@ class QueryResult:
 
 @dataclass
 class EvalReport:
-    """라벨셋 전체에 대한 평가 리포트."""
+    """Evaluation report over the whole labelset."""
 
     results: list[QueryResult]
     ks: tuple[int, ...]
@@ -114,7 +115,7 @@ class EvalReport:
         return [r for r in self.results if not r.passed]
 
     def failures_by_stage(self) -> dict[str, list[QueryResult]]:
-        """실패 질의를 유실 단계별로 그룹핑 — 개선 우선순위 판단의 근거."""
+        """Group failures by losing stage — the basis for prioritizing fixes."""
         grouped: dict[str, list[QueryResult]] = {}
         for r in self.failures:
             grouped.setdefault(r.lost_at or "unknown", []).append(r)
@@ -172,11 +173,12 @@ class EvalReport:
 
 
 class EvalHarness:
-    """검색 파이프라인 평가 실행기.
+    """Evaluation runner for a search pipeline.
 
-    run_fn: 질의 문자열을 받아 StageTrace를 반환하는 함수.
-            엔진이 무엇이든(BM25, 하이브리드, LLM 재랭킹) 이 서명만 맞추면 된다.
-    ks:     Hit@K를 계산할 K 값들. 마지막 단계 후보가 max(ks)보다 짧아도 동작한다.
+    run_fn: a function taking a query string and returning a StageTrace.
+            Any engine (BM25, hybrid, LLM re-ranked) fits this signature.
+    ks:     the K values for Hit@K. Works even if the final stage has
+            fewer candidates than max(ks).
     """
 
     def __init__(self, run_fn: Callable[[str], StageTrace], ks: tuple[int, ...] = (1, 5, 10)):
@@ -206,10 +208,10 @@ class EvalHarness:
         )
 
     def _diagnose(self, trace: StageTrace, gold: frozenset[str]) -> str:
-        """정답이 처음 사라진 단계를 찾는다 (깔때기 가정)."""
+        """Find the first stage where the gold answer disappears (funnel assumption)."""
         for stage_name, candidates in trace.stages:
             if not gold & set(candidates):
                 return stage_name
-        # 모든 단계에 정답이 있는데 Hit@max(ks)에 실패했다면
-        # 최종 랭킹에서 K 밖으로 밀린 것이다.
+        # Gold is present in every stage yet Hit@max(ks) failed — it was
+        # ranked outside K in the final list.
         return f"rank>{max(self.ks)}"

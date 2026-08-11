@@ -40,6 +40,31 @@ st.set_page_config(page_title="CiteGuard", page_icon="🛡️", layout="wide")
 st.title("🛡️ CiteGuard — Live Demo")
 st.caption("The verification layer must be deterministic · Same input → same verdict · Zero LLM calls")
 
+with st.expander("ℹ️ Background — what is this demo about?"):
+    st.markdown(
+        """
+CiteGuard generalizes verification patterns from **two production AI systems** built at a
+Korean conglomerate's AI team. This demo replays both problems on **synthetic data**
+(no proprietary code or data):
+
+**1. The search problem** *(Live Search tab)* — Korean hardware-store workers rarely use
+official product names. They order in Japanese-derived slang, abbreviations, and typos:
+**데부꾸로** *(debukkuro, from Japanese "tebukuro")* means cotton work gloves;
+**다루끼** *(daruki)* means a 30×30mm lumber square. Exact-match catalog search returns
+nothing for these — so a hybrid engine (alias ontology ∥ BM25) resolves them, and the
+**eval harness** measures it and diagnoses failures by pipeline stage.
+
+**2. The citation problem** *(Citation Gate tab)* — an LLM engine that drafts investment-review
+reports must cite sources (file · page · quote) for every claim. LLMs sometimes fabricate
+those citations. The **citation gate** verifies each one against the ingested corpus with
+deterministic string comparison — zero LLM calls — and blocks the report if any citation fails.
+
+**3. The drift problem** *(Golden Watch tab)* — LLM pipelines change behavior silently when
+prompts, models, or parameters change. **Golden tests** pin a verified output as a baseline
+and fail loudly, with an exact diff, when anything shifts.
+        """
+    )
+
 
 # ---------------------------------------------------------------- shared loaders
 @st.cache_resource
@@ -54,8 +79,11 @@ def get_corpus() -> Corpus:
 
 
 def name_of(pid: str) -> str:
+    """Display a product as ID · Korean name (English name)."""
     p = get_products().get(pid)
-    return f"{pid} · {p['name']}" if p else pid
+    if not p:
+        return pid
+    return f"{pid} · {p['name']} ({p.get('name_en', '')})"
 
 
 PRODUCTS = get_products()
@@ -73,6 +101,19 @@ with tab_search:
         "pipeline: quantity parsing → alias ∥ BM25 parallel retrieval (union pool) → score-fusion Top-5. "
         "Every intermediate result is shown as-is."
     )
+
+    with st.expander("📖 Slang glossary — what the example queries mean"):
+        st.markdown(
+            """
+| Query | Romanized | Literally | Should find |
+|---|---|---|---|
+| 데부꾸로 3켤레 | *debukkuro 3 kyeolle* | "tebukuro (JP: glove), 3 pairs" | Cotton work gloves |
+| 빽색 실리콘 2개 | *ppaeksaek silicon 2* | "white (typo) silicone, 2 pcs" | White silicone sealant |
+| 베니다 12티 두장 | *benida 12T du jang* | "veneer (JP-derived), 12T, 2 sheets" | Plywood 12mm |
+| 레베루 주세요 | *leberu juseyo* | "level (JP pronunciation), please" | Spirit level |
+| 가꾸목 다섯개 | *kkakumok 5* | "square lumber (unregistered slang)" | **intentional failure** — not in the ontology, demonstrates stage diagnosis |
+            """
+        )
 
     examples = ["데부꾸로 3켤레", "빽색 실리콘 2개", "베니다 12티 두장", "레베루 주세요", "가꾸목 다섯개"]
     cols = st.columns(len(examples))

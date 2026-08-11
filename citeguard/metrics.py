@@ -1,8 +1,9 @@
-"""검색 평가 지표.
+"""Retrieval evaluation metrics.
 
-라벨셋 기반 정보검색(IR) 표준 지표: Hit@K, Reciprocal Rank, MRR.
-운영 파이프라인의 "Top-K 안에 정답이 있는가"를 그대로 계량화한 것으로,
-실서비스 평가 체계와 지표 정의를 일치시키는 것이 핵심이다.
+Standard labeled-set IR metrics: Hit@K, Reciprocal Rank, MRR.
+These quantify exactly "is the right answer inside the Top-K the user
+sees" — keeping the evaluation aligned with the production pipeline's
+definition of success.
 """
 
 from __future__ import annotations
@@ -11,14 +12,14 @@ from collections.abc import Iterable, Sequence
 
 
 def hit_at_k(ranked: Sequence[str], gold: set[str], k: int) -> bool:
-    """상위 k개 후보 안에 정답이 하나라도 있으면 True."""
+    """True if any gold answer appears in the top k candidates."""
     if k <= 0:
         raise ValueError("k must be positive")
     return any(candidate in gold for candidate in ranked[:k])
 
 
 def reciprocal_rank(ranked: Sequence[str], gold: set[str]) -> float:
-    """첫 정답의 역순위(1/rank). 정답이 없으면 0."""
+    """Reciprocal rank (1/rank) of the first gold answer; 0 if absent."""
     for i, candidate in enumerate(ranked, start=1):
         if candidate in gold:
             return 1.0 / i
@@ -26,7 +27,7 @@ def reciprocal_rank(ranked: Sequence[str], gold: set[str]) -> float:
 
 
 def mrr(reciprocal_ranks: Iterable[float]) -> float:
-    """Mean Reciprocal Rank — 질의별 역순위의 평균."""
+    """Mean Reciprocal Rank — average of per-query reciprocal ranks."""
     ranks = list(reciprocal_ranks)
     if not ranks:
         return 0.0

@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CiteGuard — deterministic verification for LLM applications</title>
+<meta name="description" content="Interactive demo: citation gates that block source hallucination, a retrieval eval harness with stage-level diagnosis, and golden regression tests — zero LLM calls, running live in your browser.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%238b95ff' d='M12 1 3 5v6c0 5.6 3.8 10.7 9 12 5.2-1.3 9-6.4 9-12V5l-9-4Z'/><path fill='%230a0d13' d='m10.6 15.5-3-3 1.4-1.4 1.6 1.6 4.4-4.4 1.4 1.4-5.8 5.8Z'/></svg>">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav class="nav">
+  <div class="wrap nav-inner">
+    <span class="nav-mark">
+      <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#8b95ff" d="M12 1 3 5v6c0 5.6 3.8 10.7 9 12 5.2-1.3 9-6.4 9-12V5l-9-4Z"/><path fill="#0a0d13" d="m10.6 15.5-3-3 1.4-1.4 1.6 1.6 4.4-4.4 1.4 1.4-5.8 5.8Z"/></svg>
+      CiteGuard
+    </span>
+    <div class="nav-links">
+      <a href="#lab">Citation Lab</a>
+      <a href="#search">Search Pipeline</a>
+      <a href="#golden">Golden Watch</a>
+      <a href="#math">The Math</a>
+      <a class="nav-gh" href="https://github.com/SarahCho0/citeguard">GitHub ↗</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ================================================================ HERO -->
+<header class="hero">
+  <div class="wrap hero-inner">
+    <div class="hero-badge"><span class="dot"></span> every demo on this page runs the real algorithms, client-side</div>
+    <h1>Trust is <span class="accent">deterministic</span>.<br>Everything else is a guess.</h1>
+    <p class="tagline">
+      CiteGuard verifies what LLMs claim — <b>citations, retrieval quality, output stability</b> —
+      using string mathematics instead of another model.
+      <b>Same input → same verdict. Every time.</b>
+    </p>
+    <div class="hero-stats">
+      <span class="stat-chip"><b>0</b> LLM calls in verification</span>
+      <span class="stat-chip"><b>0</b> core dependencies</span>
+      <span class="stat-chip"><b>430</b> tests, incl. metric-axiom proofs</span>
+      <span class="stat-chip">JS demo <b>parity-checked</b> vs Python</span>
+    </div>
+    <div class="hero-ctas">
+      <a class="btn primary" href="#lab">Try the Citation Lab</a>
+      <a class="btn" href="https://github.com/SarahCho0/citeguard">View source</a>
+    </div>
+  </div>
+</header>
+
+<!-- ================================================================ WHY -->
+<section id="why">
+  <div class="wrap">
+    <div class="kicker reveal">Why this exists</div>
+    <h2 class="reveal">If you verify an LLM with another LLM,<br>the verifier is also guessing.</h2>
+    <p class="section-lede reveal">
+      Built from patterns shipped on two production AI systems — an enterprise product-matching
+      engine and an investment-deliberation LLM engine — generalized into a public library.
+      Three failure modes, three deterministic answers:
+    </p>
+    <div class="cards3">
+      <div class="card reveal">
+        <h3><span class="glyph">◈</span> Source hallucination</h3>
+        <p>LLM reports cite files, pages, and quotes that don't exist. The <b>Citation Gate</b> string-matches
+        every citation against the ingested corpus and blocks the report if any claim fails.</p>
+      </div>
+      <div class="card reveal">
+        <h3><span class="glyph">◎</span> Unmeasured retrieval</h3>
+        <p>"It seems to find things" is not a metric. The <b>Eval Harness</b> scores Hit@K / MRR on a labeled
+        set and diagnoses <em>which pipeline stage</em> lost the right answer.</p>
+      </div>
+      <div class="card reveal">
+        <h3><span class="glyph">◇</span> Silent drift</h3>
+        <p>Prompt and parameter changes shift outputs quietly. <b>Golden tests</b> pin verified outputs and
+        fail loudly — with an exact diff path — when anything moves.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================ LAB -->
+<section id="lab">
+  <div class="wrap">
+    <div class="kicker reveal">01 · Citation Lab</div>
+    <h2 class="reveal">Edit a quote. Watch the verdict flip.</h2>
+    <p class="section-lede reveal">
+      Six citations from a hypothetical LLM-written investment report, judged live against the
+      source corpus on the left. <b>Click a citation</b> to see its evidence — including a
+      character-level diff of quote vs. source. <b>Edit any quote</b> and the verdict recomputes
+      instantly. No LLM involved: pure normalization + edit distance.
+    </p>
+
+    <div class="toolbar reveal">
+      <label>Fuzzy threshold <span class="mono" id="thresh-val">0.85</span></label>
+      <input type="range" id="thresh" min="0.50" max="1.00" step="0.01" value="0.85">
+      <span style="font-size:12px;color:var(--faint)">similarity ≥ threshold ⇒ accepted as transcription noise</span>
+      <span class="verdict-pill block" id="gate-pill">BLOCK</span>
+    </div>
+
+    <div class="lab-grid">
+      <div class="panel reveal">
+        <div class="panel-head">📄 Ingested corpus — everything the gate knows</div>
+        <div class="panel-body">
+          <div class="file-tabs" id="file-tabs"></div>
+          <div id="corpus-pages"></div>
+        </div>
+      </div>
+      <div class="panel reveal">
+        <div class="panel-head">⚖️ Citations claimed by the report — click to inspect, type to edit</div>
+        <div class="panel-body">
+          <div id="cite-list"></div>
+          <div class="strip-wrap">
+            <div class="detail-label">Similarity of each citation vs. threshold</div>
+            <svg class="strip-svg" id="strip"></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel tryown reveal">
+      <div class="panel-head">🧪 Verify against your own document</div>
+      <div class="panel-body">
+        <textarea id="own-source" placeholder="Paste any source text here — or load a .txt file. It becomes the corpus."></textarea>
+        <div class="row">
+          <input type="text" id="own-quote" placeholder='Type a "quote" the report claims comes from that text…'>
+          <label class="btn file-btn">Load .txt file<input type="file" id="own-file" accept=".txt,.md,text/plain"></label>
+        </div>
+        <div class="tryown-result" id="own-result"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================ SEARCH -->
+<section id="search">
+  <div class="wrap">
+    <div class="kicker reveal">02 · Search Pipeline & Eval Harness</div>
+    <h2 class="reveal">Messy field language in. Exact product codes out. Measured.</h2>
+    <p class="section-lede reveal">
+      The origin problem: Korean hardware-store workers order in Japanese-derived slang, typos,
+      and abbreviations — <b>데부꾸로</b> <i>(debukkuro)</i> means cotton work gloves. Exact-match search returns
+      nothing. Type an order below and watch the hybrid pipeline resolve it, stage by stage —
+      then run the full labeled evaluation.
+    </p>
+
+    <div class="query-row reveal">
+      <input id="query" value="데부꾸로 3켤레" spellcheck="false" aria-label="field order query">
+    </div>
+    <div class="chips reveal" id="chips"></div>
+
+    <div class="pipe-grid reveal">
+      <div class="panel stage-card">
+        <div class="panel-body">
+          <div class="stage-tag">Stage 0 · Parse</div>
+          <div id="parse-out" class="mono" style="font-size:14px"></div>
+          <div class="pool-note">quantities &amp; noise words stripped</div>
+        </div>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="panel stage-card">
+        <div class="panel-body">
+          <div class="stage-tag">Stage 1 · Two parallel channels (union pool)</div>
+          <div style="font-size:12px;color:var(--faint);margin-bottom:6px">alias ontology — exact match</div>
+          <div id="alias-out"></div>
+          <div style="font-size:12px;color:var(--faint);margin:10px 0 6px">BM25 — char-bigram statistical</div>
+          <div id="bm25-out"></div>
+          <div class="pool-note" id="pool-note"></div>
+        </div>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="panel stage-card">
+        <div class="panel-body">
+          <div class="stage-tag">Stage 2 · Fused Top-5</div>
+          <div id="fused-out"></div>
+        </div>
+      </div>
+    </div>
+    <div class="lost-banner" id="lost-banner">
+      <b>Lost at the retrieve stage.</b> Neither channel knows this expression — in production this
+      query is queued for ontology alias enrichment. This is exactly what stage-level diagnosis is for.
+    </div>
+
+    <div class="eval-cta reveal">
+      <button class="btn primary" id="run-eval">▶ Run the 16-query labeled evaluation</button>
+      <span style="font-size:13px;color:var(--faint);margin-left:10px">Hit@K · MRR · stage-level failure diagnosis, computed right here</span>
+    </div>
+    <div class="eval-out" id="eval-out">
+      <div class="tiles" id="eval-tiles"></div>
+      <div id="eval-diag"></div>
+      <table class="results" id="eval-table"></table>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================ GOLDEN -->
+<section id="golden">
+  <div class="wrap">
+    <div class="kicker reveal">03 · Golden Watch</div>
+    <h2 class="reveal">Change the engine. Nothing drifts unseen.</h2>
+    <p class="section-lede reveal">
+      Move the fusion weight — how much the engine trusts the alias channel over BM25.
+      Aggregate metrics can stay flat while individual rankings shift. The golden diff pins
+      <b>every final ranking</b> against the committed baseline and names <b>exactly which query,
+      at which rank, changed to what.</b>
+    </p>
+
+    <div class="toolbar reveal">
+      <label>Alias channel weight <span class="mono" id="weight-val">2.00</span></label>
+      <input type="range" id="weight" min="0" max="4" step="0.25" value="2">
+      <span style="font-size:12px;color:var(--faint)">baseline = 2.00</span>
+      <span class="verdict-pill pass" id="golden-pill">PASS</span>
+    </div>
+
+    <div class="golden-grid">
+      <div class="panel reveal">
+        <div class="panel-head">📈 Metrics across the weight sweep — marker = current</div>
+        <div class="panel-body">
+          <svg class="sweep-svg" id="sweep"></svg>
+          <div class="tiles" style="grid-template-columns:1fr 1fr; margin-top:12px">
+            <div class="tile"><div class="t-label">Hit@1</div><div class="t-value" id="g-hit1">—</div></div>
+            <div class="tile"><div class="t-label">MRR</div><div class="t-value" id="g-mrr">—</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="panel reveal">
+        <div class="panel-head">🔍 Golden diff vs. committed baseline</div>
+        <div class="panel-body" id="golden-out"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================ MATH -->
+<section id="math">
+  <div class="wrap">
+    <div class="kicker reveal">04 · The Math</div>
+    <h2 class="reveal">Guarantees derived from structure, not vibes.</h2>
+    <p class="section-lede reveal">
+      Every verdict on this page is a deterministic function built on mathematical structure —
+      documented in full in <a href="https://github.com/SarahCho0/citeguard/blob/main/MATH.md">MATH.md</a>,
+      pinned by property tests in CI.
+    </p>
+    <div class="cards4">
+      <div class="card math-card reveal">
+        <h3><span class="glyph">≅</span> Normalization = canonical forms</h3>
+        <p>normalize() is an idempotent projection π (π∘π = π, pinned by a test). Comparing canonical
+        representatives reduces "same sentence up to notation" to plain substring matching.</p>
+        <div class="formula">x ~ y ⟺ π(x) = π(y)</div>
+      </div>
+      <div class="card math-card reveal">
+        <h3><span class="glyph">△</span> Edit distance is a metric</h3>
+        <p>Symmetry, identity, and the triangle inequality are verified empirically by parametrized tests.
+        The metric structure makes branch-and-bound window search <b>provably exact</b> — pruning cannot
+        change the result.</p>
+        <div class="formula">|len(a) − len(b)| ≤ d(a,b) ≤ d(a,c) + d(c,b)</div>
+      </div>
+      <div class="card math-card reveal">
+        <h3><span class="glyph">∝</span> BM25 = probability ranking</h3>
+        <p>IDF is a smoothed Robertson–Spärck Jones odds ratio; term-frequency saturation is a bounded
+        concave function — repeated tokens have diminishing returns, by design rather than accident.</p>
+        <div class="formula">idf·tf·(k₁+1) / (tf + k₁·(1−b+b·len/avg))</div>
+      </div>
+      <div class="card math-card reveal">
+        <h3><span class="glyph">⊕</span> Golden diff = tree isomorphism</h3>
+        <p>JSON outputs are ordered labeled trees; structural recursion decides equality — and for ordered
+        trees, equality <i>is</i> isomorphism. Every regression carries its exact root-to-leaf path.</p>
+        <div class="formula">$.final_rankings["…"][2]: "P009" → "P023"</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-motto">Same input → same verdict. Every time.</div>
+    <div class="foot-sub">Verify with structure, not with another LLM.</div>
+    <div class="foot-links">
+      <a href="https://github.com/SarahCho0/citeguard">GitHub</a>
+      <a href="https://github.com/SarahCho0/citeguard/blob/main/MATH.md">MATH.md</a>
+      <a href="https://github.com/SarahCho0">@SarahCho0</a>
+    </div>
+  </div>
+</footer>
+
+<script src="data.js"></script>
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

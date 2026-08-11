@@ -1,15 +1,15 @@
-"""편집거리 — 거리공간 공리와 branch-and-bound 정확성 검증.
+"""Edit distance — metric axioms and branch-and-bound correctness.
 
-이 테스트의 요점: levenshtein이 수학적 거리함수(metric)의 공리를
-만족함을 실측으로 확인하고, cap 조기 중단이 임계값 판정을
-바꾸지 않는다(정확성 보존)는 것을 무작위 표본으로 검증한다.
+The point of these tests: verify empirically that levenshtein satisfies
+the metric axioms, and that cap-based early exit never flips a threshold
+decision (result preservation).
 """
 
 import pytest
 
 from citeguard import levenshtein, similarity
 
-# 삼각부등식 검증용 표본 (한국어/영어/혼합/빈 문자열)
+# samples for axiom checks (Korean / English / mixed / empty strings)
 SAMPLES = ["", "a", "kitten", "sitting", "매출액", "매출액은 증가", "부채비율 156%", "부채비율(180%)"]
 
 
@@ -30,7 +30,7 @@ class TestKnownValues:
 class TestMetricAxioms:
     @pytest.mark.parametrize("a", SAMPLES)
     def test_identity(self, a):
-        # d(a,a) = 0 (비퇴화성 절반)
+        # d(a,a) = 0 (half of identity of indiscernibles)
         assert levenshtein(a, a) == 0
 
     @pytest.mark.parametrize("a", SAMPLES)
@@ -39,8 +39,8 @@ class TestMetricAxioms:
         d = levenshtein(a, b)
         assert d >= 0
         if a != b:
-            assert d > 0          # d(a,b)=0 ⟺ a=b (비퇴화성)
-        assert d == levenshtein(b, a)  # 대칭성
+            assert d > 0          # d(a,b)=0 ⟺ a=b (identity of indiscernibles)
+        assert d == levenshtein(b, a)  # symmetry
 
     @pytest.mark.parametrize("a", SAMPLES[:5])
     @pytest.mark.parametrize("b", SAMPLES[:5])
@@ -52,7 +52,7 @@ class TestMetricAxioms:
     @pytest.mark.parametrize("a", SAMPLES)
     @pytest.mark.parametrize("b", SAMPLES)
     def test_length_lower_bound(self, a, b):
-        # |len(a)-len(b)| ≤ d(a,b) — cap 프루닝의 근거
+        # |len(a)-len(b)| ≤ d(a,b) — the basis for cap pruning
         assert abs(len(a) - len(b)) <= levenshtein(a, b)
 
 
@@ -61,22 +61,22 @@ class TestCapPruning:
         assert levenshtein("kitten", "sitting", cap=5) == 3
 
     def test_capped_when_over(self):
-        # d > cap이면 cap+1 반환 — "cap 초과"라는 판정 자체는 정확
+        # returns cap+1 when d > cap — the "exceeds cap" verdict itself is exact
         assert levenshtein("aaaa", "zzzz", cap=2) == 3
 
     def test_length_gap_shortcut(self):
-        assert levenshtein("ab", "abcdefgh", cap=3) == 4  # 길이차 6 > cap → 즉시 cap+1
+        assert levenshtein("ab", "abcdefgh", cap=3) == 4  # length gap 6 > cap → immediate cap+1
 
     @pytest.mark.parametrize("a", SAMPLES)
     @pytest.mark.parametrize("b", SAMPLES)
     def test_cap_never_flips_threshold_decision(self, a, b):
-        # 핵심 성질: 임계값 판정(d ≤ cap?)은 cap 유무와 무관하게 동일해야 한다
+        # key property: the threshold decision (d ≤ cap?) must not depend on capping
         exact = levenshtein(a, b)
         for cap in (0, 1, 2, 5):
             capped = levenshtein(a, b, cap=cap)
             assert (capped <= cap) == (exact <= cap)
             if exact <= cap:
-                assert capped == exact  # cap 이하면 정확값 그대로
+                assert capped == exact  # at or under the cap, the exact value is returned
 
 
 class TestSimilarity:

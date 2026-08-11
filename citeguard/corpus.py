@@ -1,8 +1,9 @@
-"""인제스트된 원문 코퍼스.
+"""The ingested source corpus.
 
-인용 검증 게이트가 대조할 "출처의 원문"을 (파일 → 페이지 → 텍스트)
-구조로 보관한다. 실제 파이프라인에서는 PDF/pptx 인제스트 결과물이
-이 구조로 들어오고, 게이트는 이 코퍼스만을 근거로 인용을 판정한다.
+Holds the source-of-truth text that the citation gate verifies against,
+structured as (file → page → text). In a real pipeline this is the output
+of PDF/pptx ingestion; the gate judges citations against this corpus and
+nothing else.
 """
 
 from __future__ import annotations
@@ -12,19 +13,19 @@ from pathlib import Path
 
 
 class Corpus:
-    """파일명 → {페이지 번호 → 페이지 텍스트} 매핑."""
+    """Mapping of file name → {page number → page text}."""
 
     def __init__(self) -> None:
         self._pages: dict[str, dict[int, str]] = {}
 
-    # ---------- 구축 ----------
+    # ---------- construction ----------
 
     def add_page(self, source_file: str, page: int, text: str) -> None:
         self._pages.setdefault(source_file, {})[int(page)] = text
 
     @classmethod
     def from_json(cls, path: str | Path) -> "Corpus":
-        """{"파일명": {"1": "본문", "2": "..."}} 형태의 JSON에서 로드."""
+        """Load from JSON shaped like {"file.pdf": {"1": "text", "2": "..."}}."""
         corpus = cls()
         data = json.loads(Path(path).read_text(encoding="utf-8"))
         for source_file, pages in data.items():
@@ -34,9 +35,9 @@ class Corpus:
 
     @classmethod
     def from_dir(cls, path: str | Path) -> "Corpus":
-        """디렉토리의 .txt 파일들을 로드. 폼피드(\\f)로 페이지를 구분한다.
+        """Load .txt files from a directory; form-feed (\\f) separates pages.
 
-        폼피드가 없으면 파일 전체를 1페이지로 취급한다.
+        A file with no form feed becomes a single page 1.
         """
         corpus = cls()
         for txt in sorted(Path(path).glob("*.txt")):
@@ -45,7 +46,7 @@ class Corpus:
                 corpus.add_page(txt.name, i, page_text)
         return corpus
 
-    # ---------- 조회 ----------
+    # ---------- lookup ----------
 
     @property
     def files(self) -> list[str]:

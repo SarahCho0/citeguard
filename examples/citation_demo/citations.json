@@ -1,38 +1,38 @@
 [
   {
-    "source_file": "2025_투자검토보고서.pdf",
+    "source_file": "2025_investment_review_memo.pdf",
     "page": 1,
-    "quote": "2024년 연결 기준 매출액은 1,240억 원으로 전년 대비 18% 증가하였다",
+    "quote": "Consolidated revenue for FY2024 was KRW 124.0 billion, up 18% year over year",
     "expect": "verified — quote appears verbatim in the source"
   },
   {
-    "source_file": "2025_투자검토보고서.pdf",
+    "source_file": "2025_investment_review_memo.pdf",
     "page": 2,
-    "quote": "부채비율은 156%로 업계 평균 180%를 하회한다",
+    "quote": "The debt-to-equity ratio stands at 156%, below the industry average 180%",
     "expect": "fuzzy_match — minor transcription noise (parentheses dropped)"
   },
   {
-    "source_file": "2025_투자검토보고서.pdf",
+    "source_file": "2025_investment_review_memo.pdf",
     "page": 1,
-    "quote": "물류센터 임차 계약 중 1건이 2026년 만료 예정",
+    "quote": "One of the three logistics-center leases expires in 2026",
     "expect": "wrong_page — quote is real but lives on p.3"
   },
   {
-    "source_file": "2025_투자검토보고서.pdf",
+    "source_file": "2025_investment_review_memo.pdf",
     "page": 2,
-    "quote": "영업이익률은 12.4%로 업계 최고 수준이다",
+    "quote": "The operating margin reached 12.4%, the highest among industry peers",
     "expect": "quote_not_found — fabricated figure (actual: 6.8%)"
   },
   {
-    "source_file": "2025_재무제표_상세.pdf",
+    "source_file": "2025_financial_statements.pdf",
     "page": 1,
-    "quote": "현금성 자산은 220억 원이다",
+    "quote": "Cash and equivalents total KRW 22.0 billion",
     "expect": "file_not_found — cites a file that was never ingested"
   },
   {
-    "source_file": "2025_실사자료_요약.pdf",
+    "source_file": "2025_due_diligence_summary.pdf",
     "page": 9,
-    "quote": "무형자산 손상 징후가 확인되었다",
+    "quote": "Indications of intangible-asset impairment were identified",
     "expect": "page_not_found — page does not exist"
   }
 ]

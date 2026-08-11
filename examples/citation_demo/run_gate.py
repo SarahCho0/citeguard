@@ -1,10 +1,11 @@
-"""인용 검증 게이트 데모 실행 스크립트.
+"""Citation gate demo runner.
 
     python examples/citation_demo/run_gate.py
 
-LLM이 생성했다고 가정한 리포트의 인용 6건(정상 2 + 오류 4)을
-인제스트 코퍼스와 결정적으로 대조한다. LLM 호출은 0회.
-게이트가 BLOCK을 반환하면 리포트는 발행되지 않는다는 시나리오.
+Verifies 6 citations from a hypothetical LLM-generated investment report
+(2 valid + 4 defective) against the ingested corpus — deterministically,
+with zero LLM calls. If the gate returns BLOCK, the report is not
+published: that is the scenario this demo plays out.
 """
 
 from __future__ import annotations
@@ -14,7 +15,7 @@ import sys
 from pathlib import Path
 
 DEMO_DIR = Path(__file__).parent
-sys.path.insert(0, str(DEMO_DIR.parents[1]))  # citeguard 패키지 import용 (미설치 실행 대비)
+sys.path.insert(0, str(DEMO_DIR.parents[1]))  # allow running without installing the package
 
 from citeguard import Citation, CitationGate, Corpus  # noqa: E402
 
@@ -33,7 +34,7 @@ def main() -> int:
     print()
     for row, result in zip(rows, report.results):
         mark = "✅" if result.passed else "⛔"
-        print(f"{mark} expected: {row['expect']:<58} verdict: {result.status.value}")
+        print(f"{mark} expected: {row['expect']:<62} verdict: {result.status.value}")
 
     out = DEMO_DIR / "out"
     out.mkdir(exist_ok=True)
@@ -43,7 +44,7 @@ def main() -> int:
     (out / "gate_report.md").write_text(report.to_markdown(), encoding="utf-8")
     print(f"\nReport saved: {out / 'gate_report.json'}")
 
-    # 오류 인용이 섞여 있으므로 게이트는 BLOCK이어야 정상
+    # Defective citations are present, so BLOCK is the correct outcome
     return 0 if not report.ok() else 1
 
 

@@ -1,4 +1,4 @@
-"""IR 지표(hit@k, RR, MRR) 테스트."""
+"""IR metric tests (hit@k, RR, MRR)."""
 
 import pytest
 
@@ -34,7 +34,7 @@ class TestReciprocalRank:
         assert reciprocal_rank(["x", "y"], {"a"}) == 0.0
 
     def test_first_gold_wins(self):
-        # 정답이 여러 개면 가장 앞선 정답의 순위를 쓴다
+        # with multiple golds, the earliest-ranked one counts
         assert reciprocal_rank(["x", "b", "a"], {"a", "b"}) == pytest.approx(1 / 2)
 
 

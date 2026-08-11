@@ -1,11 +1,11 @@
-"""검색 평가 하네스 데모 실행 스크립트.
+"""Retrieval eval harness demo runner.
 
     python examples/search_demo/run_eval.py
 
-1. 하이브리드 검색 엔진을 라벨셋 15건으로 평가 (Hit@1/3/5 + MRR)
-2. 실패 질의를 단계별(retrieve/rerank)로 진단
-3. 결과를 골든 기준선과 비교해 회귀 여부 확인
-4. 리포트를 out/eval_report.{md,json}에 저장 (Streamlit 대시보드가 읽음)
+1. Evaluates the hybrid search engine on a 16-query labeled set (Hit@1/3/5 + MRR)
+2. Diagnoses failing queries by stage (retrieve vs rerank)
+3. Checks the result against the golden baseline for regressions
+4. Saves reports to out/eval_report.{md,json} (read by the Streamlit dashboard)
 """
 
 from __future__ import annotations
@@ -15,8 +15,8 @@ import sys
 from pathlib import Path
 
 DEMO_DIR = Path(__file__).parent
-sys.path.insert(0, str(DEMO_DIR))          # search 모듈 import용
-sys.path.insert(0, str(DEMO_DIR.parents[1]))  # citeguard 패키지 import용 (미설치 실행 대비)
+sys.path.insert(0, str(DEMO_DIR))          # import the local search module
+sys.path.insert(0, str(DEMO_DIR.parents[1]))  # allow running without installing the package
 
 from search import load_engine  # noqa: E402
 
@@ -33,7 +33,7 @@ def main() -> int:
     print(report.to_markdown())
     print()
 
-    # ---- 골든 회귀 체크: 지표와 최종 랭킹이 조용히 퇴행하지 않는지 고정 ----
+    # ---- golden regression check: pin metrics AND final rankings so nothing drifts silently
     store = GoldenStore(DEMO_DIR / "golden")
     golden_payload = {
         "metrics": report.to_dict()["metrics"],
@@ -44,7 +44,7 @@ def main() -> int:
     case = store.check("search_eval_baseline", golden_payload)
     print(case.summary())
 
-    # ---- 대시보드용 산출물 저장 ----
+    # ---- save artifacts for the dashboard
     out = DEMO_DIR / "out"
     out.mkdir(exist_ok=True)
     (out / "eval_report.json").write_text(

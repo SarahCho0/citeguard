@@ -1,4 +1,4 @@
-"""GoldenStore/diff — 골든 회귀 테스트 동작 검증."""
+"""GoldenStore/diff — golden regression runner behavior."""
 
 import pytest
 
@@ -86,7 +86,7 @@ class TestGoldenStore:
             store.save("../escape", {})
 
     def test_korean_content_saved_readably(self, tmp_path):
-        # ensure_ascii=False로 저장되어 git diff에서 한국어가 읽혀야 한다
+        # saved with ensure_ascii=False so Korean stays readable in git diffs
         store = GoldenStore(tmp_path)
         store.save("case", {"query": "데부꾸로"})
         assert "데부꾸로" in (tmp_path / "case.json").read_text(encoding="utf-8")
@@ -96,7 +96,7 @@ class TestAssertHelper:
     def test_passes_silently(self, tmp_path):
         store = GoldenStore(tmp_path)
         store.check("c", {"v": 1})
-        assert_matches_golden(store, "c", {"v": 1})  # 예외 없어야 함
+        assert_matches_golden(store, "c", {"v": 1})  # must not raise
 
     def test_raises_with_diff_message(self, tmp_path):
         store = GoldenStore(tmp_path)

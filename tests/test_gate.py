@@ -1,4 +1,7 @@
-"""CitationGate 판정 로직 테스트 — 6개 상태 전부 커버."""
+"""CitationGate verdict logic tests — all six statuses covered.
+
+Fixture corpus/quotes are Korean on purpose: Korean-text robustness is a
+stated feature, and this pins it."""
 
 import pytest
 
@@ -33,21 +36,21 @@ class TestVerified:
         assert result.passed
 
     def test_whitespace_variation_still_verified(self, gate):
-        # 공백 개수 차이는 정규화가 흡수한다
+        # whitespace-count differences are absorbed by normalization
         result = gate.check(Citation("report.pdf", 1, "매출액은  1,240억   원으로 전년 대비 18% 증가하였다"))
         assert result.status == Status.VERIFIED
 
 
 class TestFuzzy:
     def test_minor_transcription_error_is_fuzzy(self, gate):
-        # 괄호 표기가 빠진 경미한 전사 오차 → 임계값 이상 유사
+        # parentheses dropped — minor transcription noise above the threshold
         result = gate.check(Citation("report.pdf", 2, "부채비율은 156%로 업계 평균 180%를 하회한다"))
         assert result.status == Status.FUZZY_MATCH
         assert 0.85 <= result.score < 1.0
         assert result.passed
 
     def test_fabricated_content_not_fuzzy(self, gate):
-        # 수치를 지어낸 문장은 유사도가 임계값에 못 미쳐야 한다
+        # a sentence with a fabricated figure must stay below the threshold
         result = gate.check(Citation("report.pdf", 2, "영업이익률은 12.4%로 업계 최고 수준이다"))
         assert result.status == Status.QUOTE_NOT_FOUND
         assert not result.passed
@@ -58,10 +61,10 @@ class TestWrongPage:
         result = gate.check(Citation("report.pdf", 1, "부채비율은 156%로 업계 평균(180%)을 하회한다"))
         assert result.status == Status.WRONG_PAGE
         assert result.found_page == 2
-        assert not result.passed  # 페이지 표기 오류는 통과가 아닌 경고
+        assert not result.passed  # a mislabeled page is a warning, not a pass
 
     def test_missing_page_but_quote_exists_elsewhere(self, gate):
-        # 존재하지 않는 페이지를 지목했지만 인용문 자체는 실재 → WRONG_PAGE로 구제
+        # cited page does not exist, but the quote is real → rescued as WRONG_PAGE
         result = gate.check(Citation("report.pdf", 9, "영업이익률은 6.8%이다"))
         assert result.status == Status.WRONG_PAGE
         assert result.found_page == 2

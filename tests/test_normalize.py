@@ -1,4 +1,4 @@
-"""normalize/squash 정규화 테스트."""
+"""normalize/squash canonicalization tests."""
 
 import pytest
 
@@ -17,7 +17,7 @@ class TestNormalize:
         assert normalize("‘단일’") == "'단일'"
 
     def test_nfkc_fullwidth_to_halfwidth(self):
-        # 전각 숫자·영문이 반각으로 통일되어야 한다
+        # full-width digits/letters must unify to half-width
         assert normalize("１２３ＡＢＣ") == "123abc"
 
     def test_strips_edges(self):

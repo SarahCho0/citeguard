@@ -1,7 +1,8 @@
-"""데모 하이브리드 검색 엔진 통합 테스트.
+"""Demo hybrid search engine integration tests.
 
-라이브러리(EvalHarness)와 데모 엔진(alias ∥ BM25)이 실제로 맞물려
-도는지 엔드투엔드로 확인한다.
+End-to-end check that the library (EvalHarness) and the demo engine
+(alias ∥ BM25) actually mesh. Queries are Korean field slang — that is
+the domain being demonstrated.
 """
 
 import sys
@@ -45,7 +46,7 @@ class TestChannels:
         assert hits[0][0] == "P001"
 
     def test_bm25_recovers_typo(self, engine):
-        # "빽색"(오타)도 bigram 겹침으로 백색 실리콘을 회수해야 한다
+        # the typo "빽색" must still recover white silicone via bigram overlap
         ids = [pid for pid, _ in engine.bm25.search("빽색 실리콘")]
         assert "P009" in ids
 
@@ -74,7 +75,7 @@ class TestPipeline:
 
 class TestEndToEnd:
     def test_labelset_eval_meets_quality_bar(self, engine):
-        # 데모 라벨셋 기준 최소 품질 기준선 — 이 아래로 떨어지면 회귀
+        # minimum quality bar on the demo labelset — dropping below is a regression
         labelset = load_labelset(DEMO_DIR / "labelset.json")
         report = EvalHarness(engine.run, ks=(1, 3, 5)).evaluate(labelset)
         assert report.hit_rate(5) >= 0.9
