@@ -1,16 +1,32 @@
-<img src="https://capsule-render.vercel.app/api?type=waving&color=6366f1&height=200&section=header&text=CiteGuard&fontColor=ffffff&fontSize=52&fontAlignY=38&desc=Verification%20Toolkit%20for%20LLM%20Applications&descSize=20&descAlignY=60&descColor=e0e7ff" width="100%"/>
-
 <div align="center">
 
-![Tests](https://img.shields.io/badge/tests-430%20passing-brightgreen?style=for-the-badge)
-![LLM calls](https://img.shields.io/badge/LLM%20calls%20in%20verification-0-6366f1?style=for-the-badge)
-![Dependencies](https://img.shields.io/badge/core%20dependencies-0-6366f1?style=for-the-badge)
-![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![License](https://img.shields.io/badge/license-MIT-black?style=for-the-badge)
+<br/>
 
-**Deterministic citation gates · Retrieval eval harness · Golden-test regression runner**
+<img src="https://img.shields.io/badge/🛡-CiteGuard-1E3A5F?style=for-the-badge&labelColor=1C1917&color=1E3A5F" height="36"/>
+
+<br/><br/>
+
+# CiteGuard
+### Verification Toolkit for LLM Applications
+
+**Deterministic citation gates · Retrieval eval harness · Golden-test regression runner** —
+for pipelines where *“the LLM said so”* is not evidence.
+
+<br/>
+
+[![Tests](https://img.shields.io/badge/tests-430_passing-2E7D32?style=flat-square&logo=pytest&logoColor=white)](tests/)
+[![LLM calls](https://img.shields.io/badge/LLM_calls_in_verification-0-1E3A5F?style=flat-square)](MATH.md)
+[![Dependencies](https://img.shields.io/badge/core_dependencies-0-1E3A5F?style=flat-square)](pyproject.toml)
+[![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
+[![License](https://img.shields.io/badge/license-MIT-333333?style=flat-square)](LICENSE)
+
+<br/>
+
+---
 
 </div>
+
+<br/>
 
 > 🛡️ LLM 애플리케이션 검증 툴킷 — 출처 할루시네이션을 차단하는 인용 검증 게이트,
 > 라벨셋 기반 검색 평가 하네스, 파이프라인 회귀를 잡는 골든 테스트 러너.
@@ -171,4 +187,17 @@ no proprietary code or data included.
 
 MIT
 
-<img src="https://capsule-render.vercel.app/api?type=waving&color=6366f1&height=100&section=footer" width="100%"/>
+<br/>
+
+---
+
+<div align="center">
+
+**Same input → same verdict. Every time.**
+That one property is the whole toolkit.
+
+<br/>
+
+Verify with structure, not with another LLM 🛡
+
+</div>
