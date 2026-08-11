@@ -1,0 +1,9 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+.DS_Store
+examples/*/out/
+# golden/ 디렉토리는 회귀 기준선이므로 커밋 대상 (ignore하지 않음)
