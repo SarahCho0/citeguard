@@ -96,18 +96,27 @@ with tab_search:
         with col_alias:
             st.markdown("**Stage 1a — alias channel** (ontology exact match)")
             rows = [{"product": name_of(pid), "score": s} for pid, s in meta["alias_scored"]]
-            st.dataframe(rows, use_container_width=True, hide_index=True) if rows else st.info("no hits")
+            if rows:
+                st.dataframe(rows, use_container_width=True, hide_index=True)
+            else:
+                st.info("no hits")
         with col_bm25:
             st.markdown("**Stage 1b — BM25 channel** (char-bigram statistical retrieval)")
             rows = [{"product": name_of(pid), "score": s} for pid, s in meta["bm25_scored"]]
-            st.dataframe(rows, use_container_width=True, hide_index=True) if rows else st.info("no hits")
+            if rows:
+                st.dataframe(rows, use_container_width=True, hide_index=True)
+            else:
+                st.info("no hits")
         with col_final:
             st.markdown("**Stage 2 — fused Top-5** (alias 2 : BM25 1 weighting)")
             rows = [
                 {"rank": i, "product": name_of(pid), "fused score": s}
                 for i, (pid, s) in enumerate(meta["fused_scored"], 1)
             ]
-            st.dataframe(rows, use_container_width=True, hide_index=True) if rows else st.warning("no candidates — lost at retrieve")
+            if rows:
+                st.dataframe(rows, use_container_width=True, hide_index=True)
+            else:
+                st.warning("no candidates — lost at retrieve")
 
         if not trace.final:
             st.error(
