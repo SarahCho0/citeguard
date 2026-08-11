@@ -3,6 +3,8 @@
 
 "use strict";
 
+const CG = CiteGuard;  // engine.js exposes the engine as the CiteGuard global
+
 const $ = (sel) => document.querySelector(sel);
 const el = (tag, cls, html) => {
   const n = document.createElement(tag);
@@ -399,10 +401,15 @@ $("#weight").addEventListener("input", runGolden);
 /* Scroll reveal + init                                                  */
 /* ==================================================================== */
 
-const io = new IntersectionObserver((entries) => {
-  for (const e of entries) if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
-}, { threshold: 0.08 });
-document.querySelectorAll(".reveal").forEach((n) => io.observe(n));
+if (typeof IntersectionObserver !== "undefined") {
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+  }, { threshold: 0.08 });
+  document.querySelectorAll(".reveal").forEach((n) => io.observe(n));
+} else {
+  // environments without IntersectionObserver: show everything immediately
+  document.querySelectorAll(".reveal").forEach((n) => n.classList.add("in"));
+}
 
 runGate();
 runSearch();

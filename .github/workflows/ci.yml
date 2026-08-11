@@ -37,3 +37,8 @@ jobs:
 
       - name: Web demo JS engine parity vs Python
         run: python scripts/check_js_parity.py
+
+      - name: Web demo page renders (jsdom smoke test)
+        run: |
+          mkdir -p /tmp/jsdom-smoke && cd /tmp/jsdom-smoke && npm init -y > /dev/null && npm install jsdom --no-audit --no-fund
+          cd $GITHUB_WORKSPACE && CITEGUARD_JSDOM_DIR=/tmp/jsdom-smoke node scripts/check_demo_page.js
