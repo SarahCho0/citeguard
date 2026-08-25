@@ -57,7 +57,7 @@ def parse_query(query: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Stage 1a — alias channel: ontology-based exact matching
+# Stage 1a — alias channel: thesaurus-based exact matching
 # ---------------------------------------------------------------------------
 
 class AliasIndex:

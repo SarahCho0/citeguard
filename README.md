@@ -162,7 +162,7 @@ zero characters with official product names. A small glossary:
 | 빽색 | *ppaeksaek* | white (typo of 백색) | typo |
 | 가꾸목 | *kkakumok* | lumber square — **intentionally unregistered**, demonstrates retrieve-stage failure diagnosis | Japanese 角木 |
 
-The pipeline: quantity parsing → **parallel alias-ontology ∥ char-bigram BM25 retrieval (union
+The pipeline: quantity parsing → **parallel alias-thesaurus ∥ char-bigram BM25 retrieval (union
 pool)** → score-fusion re-ranking, evaluated on a 16-query labeled set. Everything else in the
 repo — code, comments, reports, UI — is English; Korean appears only where Korean-text handling
 *is the feature being demonstrated*.

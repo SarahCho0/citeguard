@@ -351,7 +351,7 @@ const LABELSET = [
       "P005",
       "P006"
     ],
-    "note": "intentional failure — unregistered slang (가꾸목=lumber square); must diagnose as a retrieve-stage loss, ontology alias enrichment candidate"
+    "note": "intentional failure — unregistered slang (가꾸목=lumber square); must diagnose as a retrieve-stage loss, thesaurus alias enrichment candidate"
   }
 ];
 const GOLDEN_BASELINE = {

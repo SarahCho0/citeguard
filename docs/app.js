@@ -309,7 +309,7 @@ $("#run-eval").addEventListener("click", () => {
     ? failures.map((r) =>
         `<div class="diag-card">Lost at <code>${r.lostAt}</code> — <span class="mono">"${esc(r.query)}"</span>.
          ${r.lostAt === "retrieve"
-           ? "A <b>recall</b> problem: the ontology doesn't know this slang yet → alias enrichment, not prompt tuning."
+           ? "A <b>recall</b> problem: the thesaurus doesn't know this slang yet → alias enrichment, not prompt tuning."
            : "A <b>ranking</b> problem: retrieved but ranked out → fix fusion/re-ranking, not the index."}</div>`
       ).join("")
     : `<div class="diag-card" style="border-color:var(--ok);background:var(--ok-dim)">No failing queries.</div>`;

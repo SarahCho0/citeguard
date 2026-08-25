@@ -51,7 +51,7 @@ Korean conglomerate's AI team. This demo replays both problems on **synthetic da
 official product names. They order in Japanese-derived slang, abbreviations, and typos:
 **데부꾸로** *(debukkuro, from Japanese "tebukuro")* means cotton work gloves;
 **다루끼** *(daruki)* means a 30×30mm lumber square. Exact-match catalog search returns
-nothing for these — so a hybrid engine (alias ontology ∥ BM25) resolves them, and the
+nothing for these — so a hybrid engine (alias thesaurus ∥ BM25) resolves them, and the
 **eval harness** measures it and diagnoses failures by pipeline stage.
 
 **2. The citation problem** *(Citation Gate tab)* — an LLM engine that drafts investment-review
@@ -111,7 +111,7 @@ with tab_search:
 | 빽색 실리콘 2개 | *ppaeksaek silicon 2* | "white (typo) silicone, 2 pcs" | White silicone sealant |
 | 베니다 12티 두장 | *benida 12T du jang* | "veneer (JP-derived), 12T, 2 sheets" | Plywood 12mm |
 | 레베루 주세요 | *leberu juseyo* | "level (JP pronunciation), please" | Spirit level |
-| 가꾸목 다섯개 | *kkakumok 5* | "square lumber (unregistered slang)" | **intentional failure** — not in the ontology, demonstrates stage diagnosis |
+| 가꾸목 다섯개 | *kkakumok 5* | "square lumber (unregistered slang)" | **intentional failure** — not in the thesaurus, demonstrates stage diagnosis |
             """
         )
 
@@ -135,7 +135,7 @@ with tab_search:
 
         col_alias, col_bm25, col_final = st.columns(3)
         with col_alias:
-            st.markdown("**Stage 1a — alias channel** (ontology exact match)")
+            st.markdown("**Stage 1a — alias channel** (thesaurus exact match)")
             rows = [{"product": name_of(pid), "score": s} for pid, s in meta["alias_scored"]]
             if rows:
                 st.dataframe(rows, use_container_width=True, hide_index=True)
@@ -162,7 +162,7 @@ with tab_search:
         if not trace.final:
             st.error(
                 "Neither channel knows this expression → **lost at the retrieve stage**. "
-                "In production, this query would be queued for ontology alias enrichment."
+                "In production, this query would be queued for thesaurus alias enrichment."
             )
 
     st.divider()
@@ -182,7 +182,7 @@ with tab_search:
             st.warning(
                 f"**Lost at `{stage}` — {len(rows)} query(ies)**: "
                 + ", ".join(f'"{r.query}"' for r in rows)
-                + "  → a retrieve loss is a recall (ontology) problem, a rerank loss is a "
+                + "  → a retrieve loss is a recall (thesaurus) problem, a rerank loss is a "
                 "ranking problem: different fixes"
             )
         st.dataframe(
